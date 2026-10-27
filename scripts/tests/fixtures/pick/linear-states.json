@@ -1,0 +1,273 @@
+{
+  "issues": {
+    "nodes": [
+      {
+        "identifier": "KEY-201",
+        "title": "Todo ticket",
+        "url": "https://linear.app/x/KEY-201",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-201",
+        "state": {
+          "name": "Todo",
+          "type": "unstarted"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-202",
+        "title": "Backlog ticket",
+        "url": "https://linear.app/x/KEY-202",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-202",
+        "state": {
+          "name": "Backlog",
+          "type": "backlog"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": {
+          "identifier": "KEY-200"
+        },
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-203",
+        "title": "Ready to Assign ticket",
+        "url": "https://linear.app/x/KEY-203",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-203",
+        "state": {
+          "name": "Ready to Assign",
+          "type": "backlog"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-204",
+        "title": "In Progress ticket",
+        "url": "https://linear.app/x/KEY-204",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-204",
+        "state": {
+          "name": "In Progress",
+          "type": "started"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-205",
+        "title": "In Review ticket",
+        "url": "https://linear.app/x/KEY-205",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-205",
+        "state": {
+          "name": "In Review",
+          "type": "started"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-206",
+        "title": "Done ticket",
+        "url": "https://linear.app/x/KEY-206",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-206",
+        "state": {
+          "name": "Done",
+          "type": "completed"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-207",
+        "title": "Canceled ticket",
+        "url": "https://linear.app/x/KEY-207",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-207",
+        "state": {
+          "name": "Canceled",
+          "type": "canceled"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-208",
+        "title": "Triage ticket",
+        "url": "https://linear.app/x/KEY-208",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-208",
+        "state": {
+          "name": "Triage",
+          "type": "triage"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": []
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      },
+      {
+        "identifier": "KEY-200",
+        "title": "Todo ticket",
+        "url": "https://linear.app/x/KEY-200",
+        "estimate": 1,
+        "createdAt": "2026-09-01T00:00:00Z",
+        "branchName": "eric/key-200",
+        "state": {
+          "name": "Todo",
+          "type": "unstarted"
+        },
+        "project": {
+          "name": "Exports"
+        },
+        "parent": null,
+        "children": {
+          "nodes": [
+            {
+              "identifier": "KEY-999"
+            }
+          ]
+        },
+        "assignee": null,
+        "labels": {
+          "nodes": []
+        },
+        "attachments": {
+          "nodes": []
+        },
+        "inverseRelations": {
+          "nodes": []
+        }
+      }
+    ]
+  }
+}

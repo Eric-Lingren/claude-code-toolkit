@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "egress-result-schema",
+  "title": "EgressResult",
+  "description": "Return shape for every egress channel adapter. All adapters — copy-only stubs and live write-back implementations — emit exactly this shape. schema_version is a hard-cutover field; consumers must reject unknown versions.",
+  "type": "object",
+  "required": ["schema_version", "posted", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Always '1'. Hard-cutover versioning: a schema_version bump signals a breaking change."
+    },
+    "posted": {
+      "type": "boolean",
+      "description": "True if the message was successfully delivered to the channel. Always false for copy-only stubs and failed adapters."
+    },
+    "url": {
+      "type": ["string", "null"],
+      "description": "Permalink to the posted message. Null for copy-only stubs and failed adapters. Non-null for status 'posted'."
+    },
+    "thread_id": {
+      "type": ["string", "null"],
+      "description": "Channel-specific thread or message identifier. Null for copy-only stubs and failed adapters. Non-null for status 'posted'."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["copy-only", "posted", "failed"],
+      "description": "Outcome of the egress attempt. 'copy-only': stub produced text for manual paste; no write occurred. 'posted': message was delivered and url/thread_id are populated. 'failed': adapter attempted delivery but encountered an error."
+    }
+  },
+  "if": {
+    "properties": {
+      "status": { "const": "copy-only" }
+    },
+    "required": ["status"]
+  },
+  "then": {
+    "properties": {
+      "posted": { "const": false },
+      "url": { "type": "null" }
+    }
+  },
+  "else": {
+    "if": {
+      "properties": {
+        "status": { "const": "posted" }
+      },
+      "required": ["status"]
+    },
+    "then": {
+      "properties": {
+        "posted": { "const": true },
+        "url": { "type": "string", "minLength": 1 }
+      },
+      "required": ["url"]
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1",
+      "posted": false,
+      "url": null,
+      "thread_id": null,
+      "status": "copy-only"
+    },
+    {
+      "schema_version": "1",
+      "posted": true,
+      "url": "https://slack.com/archives/C12345678/p1234567890123456",
+      "thread_id": "1234567890.123456",
+      "status": "posted"
+    },
+    {
+      "schema_version": "1",
+      "posted": false,
+      "url": null,
+      "thread_id": null,
+      "status": "failed"
+    }
+  ]
+}

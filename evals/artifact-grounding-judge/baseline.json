@@ -1,0 +1,79 @@
+{
+  "agent": "artifact-grounding-judge",
+  "graded_at": "2026-10-03T04:33:24Z",
+  "records": 21,
+  "checks": {
+    "output_bare_json": {
+      "pass": 21,
+      "fail": 0,
+      "na": 0,
+      "rate": 1.0
+    },
+    "output_no_prose": {
+      "pass": 21,
+      "fail": 0,
+      "na": 0,
+      "rate": 1.0
+    },
+    "output_core_schema": {
+      "pass": 21,
+      "fail": 0,
+      "na": 0,
+      "rate": 1.0
+    },
+    "rejected_output_shape": {
+      "pass": 1,
+      "fail": 0,
+      "na": 20,
+      "rate": 1.0
+    },
+    "check_anchors_invoked": {
+      "pass": 0,
+      "fail": 21,
+      "na": 0,
+      "rate": 0.0
+    },
+    "log_learning_called_on_pass": {
+      "pass": 20,
+      "fail": 0,
+      "na": 1,
+      "rate": 1.0
+    },
+    "log_learning_quoted_heredoc": {
+      "pass": 19,
+      "fail": 1,
+      "na": 1,
+      "rate": 0.95
+    },
+    "learnings_file_written_on_pass": {
+      "pass": 0,
+      "fail": 20,
+      "na": 1,
+      "rate": 0.0
+    },
+    "no_log_learning_on_rejected": {
+      "pass": 0,
+      "fail": 1,
+      "na": 20,
+      "rate": 0.0
+    },
+    "verdict_matches_case": {
+      "pass": 0,
+      "fail": 0,
+      "na": 21,
+      "rate": null
+    },
+    "confidence_matches_case": {
+      "pass": 0,
+      "fail": 0,
+      "na": 21,
+      "rate": null
+    },
+    "pass_output_has_write_fields": {
+      "pass": 18,
+      "fail": 2,
+      "na": 1,
+      "rate": 0.9
+    }
+  }
+}

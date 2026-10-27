@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verification Report</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%F0%9F%93%8A%3C/text%3E%3C/svg%3E">
+  <style>
+    /* ── design tokens ── */
+    :root {
+      --bg:              #ffffff;
+      --bg-raised:       #f6f8fa;
+      --bg-card:         #ffffff;
+      --bg-card-hover:   #f6f8fa;
+      --border:          #d1d9e0;
+      --border-subtle:   #eaecef;
+      --text:            #1f2328;
+      --text-muted:      #636c76;
+      --text-dim:        #9198a1;
+      --link:            #0969da;
+      --focus:           #0969da;
+
+      /* verdict badges */
+      --badge-expected-bg:    #dafbe1;
+      --badge-expected-fg:    #116329;
+      --badge-needs-eyes-bg:  #fff8c5;
+      --badge-needs-eyes-fg:  #7d4e00;
+      --badge-regression-bg:  #ffd8d3;
+      --badge-regression-fg:  #82071e;
+      --badge-unexpected-bg:  #fff1e5;
+      --badge-unexpected-fg:  #7c4400;
+      --badge-uncertain-bg:   #eaeef2;
+      --badge-uncertain-fg:   #57606a;
+      --badge-dismissed-bg:   #eaeef2;
+      --badge-dismissed-fg:   #57606a;
+      --badge-rejected-bg:    #ffd8d3;
+      --badge-rejected-fg:    #82071e;
+
+      /* viewport badges */
+      --vp-desktop-bg:  #ddf4ff;
+      --vp-desktop-fg:  #0550ae;
+      --vp-mobile-bg:   #ffd8d3;
+      --vp-mobile-fg:   #82071e;
+      --vp-tablet-bg:   #fff8c5;
+      --vp-tablet-fg:   #7d4e00;
+
+      /* actions */
+      --btn-bg:         #f6f8fa;
+      --btn-fg:         #1f2328;
+      --btn-border:     #d1d9e0;
+      --btn-hover-bg:   #eaeef2;
+      --btn-reject-bg:  #fff0ed;
+      --btn-reject-fg:  #cf222e;
+      --btn-reject-border: #ffc1ba;
+      --btn-reject-hover-bg: #ffd8d3;
+
+      --summary-border: #0969da;
+      --shadow-sm:      0 1px 3px rgba(31,35,40,.08);
+      --radius:         6px;
+      --radius-sm:      4px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:              #0d1117;
+        --bg-raised:       #161b22;
+        --bg-card:         #161b22;
+        --bg-card-hover:   #1e2430;
+        --border:          #30363d;
+        --border-subtle:   #21262d;
+        --text:            #e6edf3;
+        --text-muted:      #848d97;
+        --text-dim:        #484f58;
+        --link:            #4493f8;
+        --focus:           #4493f8;
+
+        --badge-expected-bg:    #112d22;
+        --badge-expected-fg:    #3fb950;
+        --badge-needs-eyes-bg:  #2d2500;
+        --badge-needs-eyes-fg:  #d29922;
+        --badge-regression-bg:  #2d0d0d;
+        --badge-regression-fg:  #f85149;
+        --badge-unexpected-bg:  #2a1800;
+        --badge-unexpected-fg:  #e09b3d;
+        --badge-uncertain-bg:   #1e2228;
+        --badge-uncertain-fg:   #8b949e;
+        --badge-dismissed-bg:   #1e2228;
+        --badge-dismissed-fg:   #656d76;
+        --badge-rejected-bg:    #2d0d0d;
+        --badge-rejected-fg:    #f85149;
+
+        --vp-desktop-bg:  #0c2d4a;
+        --vp-desktop-fg:  #79c0ff;
+        --vp-mobile-bg:   #2d0d0d;
+        --vp-mobile-fg:   #f85149;
+        --vp-tablet-bg:   #2d2500;
+        --vp-tablet-fg:   #d29922;
+
+        --btn-bg:          #21262d;
+        --btn-fg:          #c9d1d9;
+        --btn-border:      #30363d;
+        --btn-hover-bg:    #30363d;
+        --btn-reject-bg:   #2d0d0d;
+        --btn-reject-fg:   #f85149;
+        --btn-reject-border: #5c1f24;
+        --btn-reject-hover-bg: #3d1216;
+
+        --summary-border:  #4493f8;
+        --shadow-sm:       0 1px 3px rgba(0,0,0,.4);
+      }
+    }
+
+    /* ── reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { display: block; max-width: 100%; }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--btn-border);
+      background: var(--btn-bg);
+      color: var(--btn-fg);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      transition: background 0.12s;
+    }
+    button:hover { background: var(--btn-hover-bg); }
+    button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    textarea {
+      font: inherit;
+      font-size: 0.85rem;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      resize: vertical;
+      width: 100%;
+    }
+    textarea:focus { outline: 2px solid var(--focus); }
+
+    /* ── layout ── */
+    .page-wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* ── header ── */
+    .report-header {
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .report-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .report-title .icon { font-size: 1.3rem; }
+    .run-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      align-items: center;
+    }
+    .run-meta .meta-item { display: flex; align-items: center; gap: 4px; }
+    .run-meta .meta-label { color: var(--text-dim); font-size: 0.78rem; }
+    .run-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .run-status-badge.running { background: var(--badge-needs-eyes-bg); color: var(--badge-needs-eyes-fg); }
+    .run-status-badge.done    { background: var(--badge-expected-bg);    color: var(--badge-expected-fg); }
+
+    /* summary row */
+    .summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: var(--bg-raised);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      border-left: 3px solid var(--summary-border);
+    }
+    .summary-stat {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .summary-stat .count {
+      font-weight: 700;
+      font-size: 1.0rem;
+    }
+
+    /* ── empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.95rem; }
+    .empty-state .empty-sub { font-size: 0.82rem; margin-top: 6px; color: var(--text-dim); }
+
+    /* ── spec section ── */
+    .spec-section {
+      margin-bottom: 32px;
+    }
+    .spec-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.0rem;
+      font-weight: 600;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 12px;
+    }
+    .spec-count {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    /* ── capture card ── */
+    .capture-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: border-color 0.12s;
+    }
+    .capture-card.needs-eyes { border-left: 3px solid var(--badge-needs-eyes-fg); }
+    .capture-card.regression  { border-left: 3px solid var(--badge-regression-fg); }
+
+    .capture-header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg-raised);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .capture-route {
+      font-family: "SF Mono", ui-monospace, monospace;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .capture-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .capture-body {
+      padding: 12px 14px;
+    }
+
+    /* image trio */
+    .image-trio {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 800px) {
+      .image-trio { grid-template-columns: 1fr; }
+    }
+    .image-panel { display: flex; flex-direction: column; gap: 4px; }
+    .image-panel-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-dim);
+    }
+    .image-panel img {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-raised);
+    }
+    .image-panel .no-image {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: var(--bg-raised);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+    }
+
+    /* rationale */
+    .rationale-details {
+      margin-top: 6px;
+      font-size: 0.85rem;
+    }
+    .rationale-details summary {
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      padding: 2px 0;
+      user-select: none;
+    }
+    .rationale-details summary:hover { color: var(--text); }
+    .rationale-text {
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: var(--bg-raised);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    /* reject inline form */
+    .reject-form {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .reject-form.open { display: flex; }
+    .reject-form-row { display: flex; gap: 6px; align-items: flex-start; }
+    .reject-form textarea { min-height: 52px; }
+    .btn-reject-confirm {
+      background: var(--btn-reject-bg);
+      color: var(--btn-reject-fg);
+      border-color: var(--btn-reject-border);
+      white-space: nowrap;
+    }
+    .btn-reject-confirm:hover { background: var(--btn-reject-hover-bg); }
+    .btn-cancel { color: var(--text-muted); }
+
+    /* dismissed / rejected overlay state */
+    .capture-card.dismissed .capture-body,
+    .capture-card.rejected  .capture-body {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .capture-card.dismissed .capture-header,
+    .capture-card.rejected  .capture-header {
+      opacity: 0.65;
+    }
+
+    /* ── badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-expected   { background: var(--badge-expected-bg);   color: var(--badge-expected-fg); }
+    .badge-needs-eyes { background: var(--badge-needs-eyes-bg); color: var(--badge-needs-eyes-fg); }
+    .badge-regression { background: var(--badge-regression-bg); color: var(--badge-regression-fg); }
+    .badge-unexpected { background: var(--badge-unexpected-bg); color: var(--badge-unexpected-fg); }
+    .badge-uncertain  { background: var(--badge-uncertain-bg);  color: var(--badge-uncertain-fg); }
+    .badge-dismissed  { background: var(--badge-dismissed-bg);  color: var(--badge-dismissed-fg); }
+    .badge-rejected   { background: var(--badge-rejected-bg);   color: var(--badge-rejected-fg); }
+    .badge-desktop    { background: var(--vp-desktop-bg);        color: var(--vp-desktop-fg); }
+    .badge-mobile     { background: var(--vp-mobile-bg);         color: var(--vp-mobile-fg); }
+    .badge-tablet     { background: var(--vp-tablet-bg);         color: var(--vp-tablet-fg); }
+
+    /* ── notice banner ── */
+    .notice {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      margin-bottom: 18px;
+    }
+    .notice-info { background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-muted); }
+
+    /* ── loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--text-muted);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- header -->
+  <header class="report-header">
+    <h1 class="report-title">
+      <span class="icon">📊</span>
+      Verification Report
+    </h1>
+    <div id="run-meta" class="run-meta">
+      <span class="meta-item"><span class="spinner"></span>&nbsp;Loading run metadata…</span>
+    </div>
+    <div id="summary-row" class="summary-row" style="display:none"></div>
+  </header>
+
+  <!-- notices -->
+  <div id="notices"></div>
+
+  <!-- main content -->
+  <main id="main-content">
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <p>No captures yet.</p>
+      <p class="empty-sub">The run is initializing or no checks have completed.</p>
+    </div>
+    <div id="specs-container"></div>
+  </main>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── state ──────────────────────────────────────────────────────────────────
+  /** @type {Map<string, object>} captureId → capture document data */
+  const captures = new Map();
+  /** @type {object|null} */
+  let runMeta = null;
+  /** @type {import("./db").DB|null} */
+  let db = null;
+  /** subscriptions to tear down */
+  const unsubs = [];
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+
+  /** @param {string} verdict @returns {string} */
+  function verdictClass(verdict) {
+    const map = {
+      expected: 'expected',
+      needs_eyes: 'needs-eyes',
+      regression: 'regression',
+      unexpected: 'unexpected',
+      uncertain: 'uncertain',
+      dismissed: 'dismissed',
+      rejected: 'rejected',
+    };
+    return map[verdict] || 'uncertain';
+  }
+
+  /** @param {string} verdict @returns {string} */
+  function verdictLabel(verdict) {
+    const map = {
+      expected: 'expected',
+      needs_eyes: 'needs eyes',
+      regression: 'regression',
+      unexpected: 'unexpected',
+      uncertain: 'uncertain',
+      dismissed: 'dismissed',
+      rejected: 'rejected',
+    };
+    return map[verdict] || verdict;
+  }
+
+  /** @param {string} viewport @returns {{cls:string, label:string}} */
+  function vpBadge(viewport) {
+    if (!viewport) return { cls: 'badge-desktop', label: 'desktop' };
+    const v = String(viewport).toLowerCase();
+    if (v.includes('mobile') || v.includes('390')) return { cls: 'badge-mobile', label: 'mobile' };
+    if (v.includes('tablet') || v.includes('768')) return { cls: 'badge-tablet', label: 'tablet' };
+    return { cls: 'badge-desktop', label: 'desktop' };
+  }
+
+  /** Build an img or placeholder @param {string|null|undefined} url @param {string} alt */
+  function imgOrPlaceholder(url, alt) {
+    if (url) {
+      return `<img src="${escHtml(url)}" alt="${escHtml(alt)}" loading="lazy">`;
+    }
+    return `<div class="no-image">no image</div>`;
+  }
+
+  /** Minimal HTML escape for attribute and text content */
+  function escHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── render ─────────────────────────────────────────────────────────────────
+
+  function renderRunMeta() {
+    const el = document.getElementById('run-meta');
+    if (!runMeta) {
+      el.innerHTML = '<span class="meta-item"><em>Run metadata unavailable.</em></span>';
+      return;
+    }
+
+    const { repo, branch, pr_url, run_id, status } = runMeta;
+    const statusLabel = status === 'running' ? 'running' : 'done';
+    const parts = [];
+
+    if (repo) {
+      parts.push(`<span class="meta-item"><span class="meta-label">repo</span>${escHtml(repo)}</span>`);
+    }
+    if (branch) {
+      parts.push(`<span class="meta-item"><span class="meta-label">branch</span>${escHtml(branch)}</span>`);
+    }
+    if (pr_url) {
+      parts.push(`<span class="meta-item"><span class="meta-label">PR</span><a href="${escHtml(pr_url)}" target="_blank" rel="noopener">${escHtml(pr_url.replace(/^https?:\/\/[^/]+\//, ''))}</a></span>`);
+    }
+    if (run_id) {
+      parts.push(`<span class="meta-item"><span class="meta-label">run</span>${escHtml(run_id)}</span>`);
+    }
+    parts.push(`<span class="run-status-badge ${escHtml(statusLabel)}">${statusLabel === 'running' ? '<span class="spinner"></span>' : '✓'} ${statusLabel}</span>`);
+
+    el.innerHTML = parts.join('');
+  }
+
+  function renderSummary() {
+    const el = document.getElementById('summary-row');
+    if (captures.size === 0) { el.style.display = 'none'; return; }
+
+    let expected = 0, needsEyes = 0, regression = 0, total = 0;
+    for (const c of captures.values()) {
+      total++;
+      const s = c.status || c.verdict || '';
+      if (s === 'needs_eyes' || s === 'unexpected' || s === 'uncertain') needsEyes++;
+      else if (s === 'expected') expected++;
+      else if (s === 'regression') regression++;
+    }
+
+    const parts = [
+      `<span class="summary-stat"><span class="count">${total}</span> total captures</span>`,
+      `<span class="summary-stat"><span class="badge badge-expected">${expected} expected</span></span>`,
+    ];
+    if (needsEyes > 0) {
+      parts.push(`<span class="summary-stat"><span class="badge badge-needs-eyes">${needsEyes} needs eyes</span></span>`);
+    }
+    if (regression > 0) {
+      parts.push(`<span class="summary-stat"><span class="badge badge-regression">${regression} regression</span></span>`);
+    }
+
+    el.innerHTML = parts.join('');
+    el.style.display = '';
+  }
+
+  /** Sort key: needs_eyes / unexpected / uncertain / regression before expected/dismissed/rejected */
+  function sortKey(c) {
+    const s = c.status || c.verdict || '';
+    if (s === 'needs_eyes' || s === 'unexpected' || s === 'uncertain') return 0;
+    if (s === 'regression') return 1;
+    return 2;
+  }
+
+  function renderCaptures() {
+    const container = document.getElementById('specs-container');
+    const emptyState = document.getElementById('empty-state');
+
+    if (captures.size === 0) {
+      emptyState.style.display = '';
+      container.innerHTML = '';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    // group by spec_name
+    /** @type {Map<string, Array<{id: string, data: object}>>} */
+    const bySpec = new Map();
+    for (const [id, data] of captures.entries()) {
+      const spec = data.spec_name || '(unspecified)';
+      if (!bySpec.has(spec)) bySpec.set(spec, []);
+      bySpec.get(spec).push({ id, data });
+    }
+
+    // sort within each spec: needs_eyes first
+    for (const items of bySpec.values()) {
+      items.sort((a, b) => sortKey(a.data) - sortKey(b.data) || (a.data.ts || 0) - (b.data.ts || 0));
+    }
+
+    const html = [];
+    for (const [specName, items] of bySpec.entries()) {
+      html.push(`<section class="spec-section" data-spec="${escHtml(specName)}">`);
+      html.push(`<h2 class="spec-heading">${escHtml(specName)}<span class="spec-count">${items.length} capture${items.length !== 1 ? 's' : ''}</span></h2>`);
+      for (const { id, data } of items) {
+        html.push(renderCaptureCard(id, data));
+      }
+      html.push('</section>');
+    }
+
+    container.innerHTML = html.join('');
+
+    // wire action buttons
+    container.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', onAction);
+    });
+    container.querySelectorAll('[data-reject-submit]').forEach(btn => {
+      btn.addEventListener('click', onRejectSubmit);
+    });
+    container.querySelectorAll('[data-reject-cancel]').forEach(btn => {
+      btn.addEventListener('click', onRejectCancel);
+    });
+  }
+
+  /** @param {string} id @param {object} data @returns {string} */
+  function renderCaptureCard(id, data) {
+    const {
+      spec_name, route, viewport,
+      baseline_url, candidate_url, diff_url,
+      verdict, rationale, status, note,
+    } = data;
+
+    const effectiveStatus = status || verdict || 'uncertain';
+    const vClass = verdictClass(effectiveStatus);
+    const vLabel = verdictLabel(effectiveStatus);
+    const vp = vpBadge(viewport);
+
+    const isActionable = effectiveStatus === 'needs_eyes' || effectiveStatus === 'unexpected' || effectiveStatus === 'uncertain';
+    const isDismissed = effectiveStatus === 'dismissed';
+    const isRejected = effectiveStatus === 'rejected';
+
+    const actionButtons = isActionable && db ? `
+      <button class="btn-sm" data-action="dismiss" data-id="${escHtml(id)}" title="Dismiss from needs_eyes">Dismiss</button>
+      <button class="btn-sm" data-action="reject-open" data-id="${escHtml(id)}" title="Reject with note">Reject…</button>
+    ` : '';
+
+    const rejectNote = isRejected && note ? `<div class="rationale-text" style="margin-top:6px"><strong>Rejection note:</strong> ${escHtml(note)}</div>` : '';
+
+    const rejectForm = db ? `
+      <div class="reject-form" id="reject-form-${escHtml(id)}">
+        <textarea id="reject-note-${escHtml(id)}" placeholder="Describe what is wrong…" rows="2"></textarea>
+        <div class="reject-form-row">
+          <button class="btn-reject-confirm" data-reject-submit data-id="${escHtml(id)}">Reject</button>
+          <button class="btn-cancel" data-reject-cancel data-id="${escHtml(id)}">Cancel</button>
+        </div>
+      </div>
+    ` : '';
+
+    const ratHtml = rationale ? `
+      <details class="rationale-details">
+        <summary>Judge rationale</summary>
+        <div class="rationale-text">${escHtml(rationale)}</div>
+      </details>
+    ` : '';
+
+    return `
+      <div class="capture-card ${vClass} ${isDismissed ? 'dismissed' : ''} ${isRejected ? 'rejected' : ''}" id="capture-${escHtml(id)}">
+        <div class="capture-header">
+          <span class="badge badge-${vClass}">${escHtml(vLabel)}</span>
+          <span class="badge ${escHtml(vp.cls)}">${escHtml(vp.label)}</span>
+          <span class="capture-route">${escHtml(route || '/')}</span>
+          <div class="capture-actions">${actionButtons}</div>
+        </div>
+        <div class="capture-body">
+          <div class="image-trio">
+            <div class="image-panel">
+              <span class="image-panel-label">Baseline</span>
+              ${imgOrPlaceholder(baseline_url, 'baseline')}
+            </div>
+            <div class="image-panel">
+              <span class="image-panel-label">Candidate</span>
+              ${imgOrPlaceholder(candidate_url, 'candidate')}
+            </div>
+            <div class="image-panel">
+              <span class="image-panel-label">Visual diff</span>
+              ${imgOrPlaceholder(diff_url, 'visual diff')}
+            </div>
+          </div>
+          ${ratHtml}
+          ${rejectNote}
+          ${rejectForm}
+        </div>
+      </div>
+    `;
+  }
+
+  // ── actions ────────────────────────────────────────────────────────────────
+
+  function onAction(e) {
+    const btn = e.currentTarget;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if (!id || !db) return;
+
+    if (action === 'dismiss') {
+      dismissCapture(id, btn);
+    } else if (action === 'reject-open') {
+      const form = document.getElementById('reject-form-' + id);
+      if (form) {
+        form.classList.add('open');
+        const ta = document.getElementById('reject-note-' + id);
+        if (ta) ta.focus();
+      }
+    }
+  }
+
+  function onRejectSubmit(e) {
+    const btn = e.currentTarget;
+    const id = btn.dataset.id;
+    if (!id || !db) return;
+    const ta = document.getElementById('reject-note-' + id);
+    const note = (ta ? ta.value : '').trim();
+    rejectCapture(id, note, btn);
+  }
+
+  function onRejectCancel(e) {
+    const btn = e.currentTarget;
+    const id = btn.dataset.id;
+    const form = document.getElementById('reject-form-' + id);
+    if (form) form.classList.remove('open');
+  }
+
+  /** Write dismissed status; remove from needs_eyes view */
+  async function dismissCapture(id, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      await db.doc('captures/' + id).update({ status: 'dismissed' });
+      // onSnapshot will deliver the update and re-render
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Dismiss';
+      showError('Dismiss failed: ' + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+  /** Write rejected status + note */
+  async function rejectCapture(id, note, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      await db.doc('captures/' + id).update({ status: 'rejected', note: note || '' });
+      // onSnapshot will deliver the update and re-render
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Reject';
+      showError('Reject failed: ' + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+  // ── notice helpers ─────────────────────────────────────────────────────────
+
+  function showNotice(msg, type) {
+    const el = document.getElementById('notices');
+    const div = document.createElement('div');
+    div.className = 'notice notice-' + (type || 'info');
+    div.textContent = msg;
+    el.appendChild(div);
+    setTimeout(() => div.remove(), 8000);
+  }
+
+  function showError(msg) { showNotice(msg, 'info'); }
+
+  // ── subscriptions ──────────────────────────────────────────────────────────
+
+  function subscribeRunMeta() {
+    const unsub = db.doc('run/meta').onSnapshot(
+      snap => {
+        runMeta = snap.exists ? snap.data() : null;
+        renderRunMeta();
+      },
+      err => {
+        console.warn('[verification-report] run/meta subscription error:', err);
+      }
+    );
+    unsubs.push(unsub);
+  }
+
+  function subscribeCaptures() {
+    const unsub = db.collection('captures').onSnapshot(
+      snap => {
+        // apply incremental changes
+        for (const change of snap.docChanges()) {
+          if (change.type === 'removed') {
+            captures.delete(change.doc.id);
+          } else {
+            captures.set(change.doc.id, change.doc.data());
+          }
+        }
+        renderSummary();
+        renderCaptures();
+      },
+      err => {
+        console.warn('[verification-report] captures subscription error:', err);
+      }
+    );
+    unsubs.push(unsub);
+  }
+
+  // ── init ───────────────────────────────────────────────────────────────────
+
+  async function init() {
+    if (!window.claude) {
+      // opened as a local file or outside the artifact viewer — show static empty state
+      document.getElementById('run-meta').innerHTML =
+        '<span class="meta-item" style="color:var(--text-dim)">No viewer context (local file). Open as a claude.ai artifact for live data.</span>';
+      return;
+    }
+
+    db = await window.claude.use('db');
+
+    if (!db) {
+      document.getElementById('run-meta').innerHTML =
+        '<span class="meta-item" style="color:var(--text-dim)">DB capability unavailable for this view.</span>';
+      return;
+    }
+
+    subscribeRunMeta();
+    subscribeCaptures();
+  }
+
+  init().catch(err => {
+    console.error('[verification-report] init error:', err);
+  });
+
+})();
+</script>
+</body>
+</html>

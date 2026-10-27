@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Shim for the gh CLI. Records argv (+ stdin when piped) in the shim log and returns canned success.
+Read-only verbs get an empty JSON result, write verbs get a fake URL. Never talks to GitHub."""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import shim_lib  # noqa: E402
+
+args = sys.argv[1:]
+stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+writes = any(a in ("create", "comment", "edit", "merge", "close", "reopen", "review", "delete", "POST", "PATCH", "PUT", "DELETE") for a in args)
+out = "https://github.com/shim/shim/pull/0" if writes else "[]"
+shim_lib.record({"shim": "gh", "tool": "Bash", "args": args, "stdin": stdin,
+                 "input": {"command": "gh " + " ".join(args), "stdin": stdin}, "returned": out})
+print(out)

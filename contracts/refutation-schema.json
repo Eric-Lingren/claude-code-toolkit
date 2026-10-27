@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "refutation-schema",
+  "title": "Refutation",
+  "description": "A single refutation object returned by an adversary persona. Each persona returns a JSON array of these. On unrecoverable failure, the array contains a single error-form object instead of a refutation.",
+  "oneOf": [
+    {
+      "title": "Refutation (normal form)",
+      "type": "object",
+      "required": ["persona", "field", "claim", "problem", "transcript_span"],
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "type": "string",
+          "enum": ["grounding", "accuracy", "completeness", "coherence"],
+          "description": "Name of the persona that raised this refutation."
+        },
+        "field": {
+          "type": "string",
+          "description": "Dot-path to the seed field being challenged, e.g. 'decisions[2]' or 'summary'."
+        },
+        "claim": {
+          "type": "string",
+          "description": "Exact text of the claim being challenged."
+        },
+        "problem": {
+          "type": "string",
+          "description": "One sentence: what is wrong with the claim."
+        },
+        "transcript_span": {
+          "type": ["string", "null"],
+          "description": "Exact quote from the transcript that supports the refutation, or null if the problem is absence of any span."
+        }
+      }
+    },
+    {
+      "title": "Error form",
+      "type": "object",
+      "required": ["persona", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "type": "string",
+          "enum": ["grounding", "accuracy", "completeness", "coherence"],
+          "description": "Name of the persona that encountered the failure."
+        },
+        "error": {
+          "type": "string",
+          "description": "Short description of the unrecoverable failure."
+        },
+        "details": {
+          "type": "string",
+          "description": "Optional: additional context (stack trace, file path, etc.)."
+        }
+      }
+    }
+  ],
+  "examples": []
+}

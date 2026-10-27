@@ -1,0 +1,93 @@
+{
+  "_doc": "Single source of truth for per-skill and per-agent model+effort tiering. Edit this, then run scripts/registration/sync-model-tiers.py --apply (or just commit; the pre-commit hook applies it). Full docs: resources/model-tiers.md",
+  "tiers": {
+    "T1": {
+      "model": "haiku",
+      "effort": "low",
+      "_meaning": "Lookup. No reasoning. File search, status, how-to."
+    },
+    "T2": {
+      "model": "sonnet",
+      "effort": "medium",
+      "_meaning": "Mechanical. Narrow, well-defined scope."
+    },
+    "T3": {
+      "model": "sonnet",
+      "effort": "high",
+      "_meaning": "Standard build. Context-aware. Default tier for unlisted skills (session default lives in settings.json)."
+    },
+    "T4": {
+      "model": "opus",
+      "effort": "xhigh",
+      "_meaning": "Deep reasoning. Architecture, complex debug, planning."
+    }
+  },
+  "default": "T3",
+  "skills": {
+    "how-to": "T1",
+    "find-work": "T1",
+    "tasks-to-linear": "T2",
+    "run-task-followups": "T2",
+    "cc-usage-analytics": "T2",
+    "build-code": "T3",
+    "dispatch-tasks": "T2",
+    "tdd": "T3",
+    "improve-component": "T3",
+    "pr-code-review": "T3",
+    "to-e2e-tasks": "T3",
+    "prototype": "T3",
+    "tldr-tech": "T3",
+"improve-skill-benchmarks": "T3",
+    "improve-agent-benchmarks": "T3",
+    "improve-skill-learnings": "T3",
+    "to-spec": "T3",
+    "to-seed": "T3",
+    "to-tasks": "T3",
+    "grill-me": "T4",
+    "grill-with-docs": "T4",
+    "debug": "T4",
+    "improve-codebase-architecture": "T4",
+    "register-skill": "T2",
+    "handoff": "T2",
+    "clean-scaffolding": "T1",
+    "pr-revise": "T3",
+    "relay": "T2",
+    "investigate": "T1",
+    "improve-directory-structure": "T4",
+    "worktree": "T2",
+    "offload": "T2",
+    "ci-fix": "T3",
+    "standup": "T2",
+    "retro": "T2",
+    "pick": "T1"
+  },
+  "agents": {
+    "architecture-auditor": "T3",
+    "browser-checker": "T1",
+    "context-loader": "T1",
+    "lint-runner": "T1",
+    "test-runner": "T1",
+    "e2e-runner": "T1",
+    "persona-grounding": "T1",
+    "persona-accuracy": "T1",
+    "persona-completeness": "T1",
+    "persona-coherence": "T1",
+    "persona-judge": "T3",
+    "capture-learning": "T2",
+    "export-tasks": "T2",
+    "build-runner": "T3",
+    "visual-judge": "T2",
+    "pick-scorer": "T2"
+  },
+  "delegate": [
+    "build-code",
+    "improve-component",
+    "pr-code-review",
+    "to-e2e-tasks",
+    "debug",
+    "improve-codebase-architecture",
+    "pr-revise",
+    "improve-directory-structure",
+    "ci-fix"
+  ]
+}

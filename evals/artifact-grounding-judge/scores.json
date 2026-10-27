@@ -1,0 +1,74 @@
+{
+  "agent": "artifact-grounding-judge",
+  "updated": "2026-10-03T05:45:24Z",
+  "iteration": 3,
+  "check_fixed": "verdict_matches_case",
+  "rates": {
+    "output_bare_json": {
+      "pass": 0,
+      "total": 0
+    },
+    "output_no_prose": {
+      "pass": 0,
+      "total": 0
+    },
+    "output_core_schema": {
+      "pass": 16,
+      "total": 16
+    },
+    "rejected_output_shape": {
+      "pass": 10,
+      "total": 10
+    },
+    "check_anchors_invoked": {
+      "pass": 16,
+      "total": 16
+    },
+    "log_learning_called_on_pass": {
+      "pass": 6,
+      "total": 6
+    },
+    "log_learning_quoted_heredoc": {
+      "pass": 6,
+      "total": 6
+    },
+    "learnings_file_written_on_pass": {
+      "pass": 6,
+      "total": 6
+    },
+    "no_log_learning_on_rejected": {
+      "pass": 10,
+      "total": 10
+    },
+    "verdict_matches_case": {
+      "pass": 16,
+      "total": 16
+    },
+    "confidence_matches_case": {
+      "pass": 15,
+      "total": 16
+    },
+    "pass_output_has_write_fields": {
+      "pass": 6,
+      "total": 6
+    }
+  },
+  "cases": [
+    "plant-a5b6af6b4f-calendar-select-guard-inverted",
+    "plant-a5b6af6b4f-test-case-paraphrase",
+    "plant-a985947a24-date-excluded-reversed",
+    "plant-a9fd9ec84a-reset-queries-renamed",
+    "plant-aad6a75db1-isvalid-claim-negated",
+    "plant-aad6a75db1-setfieldvalue-renamed",
+    "plant-ae41f67b9a-replace-regex-changed",
+    "plant-ae41f67b9a-string-guard-inverted",
+    "plant-aeb2d01fc0-edit-mode-negated",
+    "plant-aeb2d01fc0-severity-value-changed",
+    "real-a5b6af6b4f",
+    "real-a985947a24",
+    "real-a9fd9ec84a",
+    "real-aad6a75db1",
+    "real-ae41f67b9a",
+    "real-aeb2d01fc0"
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "check-spec-schema",
+  "title": "Check Spec",
+  "description": "Declarative, repeatable definition of one browser check. Executed identically against Baseline (merge-base render) and Candidate (feature branch render) by browser-verify.mjs. Ephemeral — lives in excluded docs/browser-checks/ scaffolding, never committed.",
+  "type": "object",
+  "required": ["role", "viewports", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "Named identity from the repo's Auth Profile (e.g. 'admin', 'firm', 'trial', 'anonymous'). Determines which stored state file browser-verify.mjs loads before running steps."
+    },
+    "viewports": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of viewports to run the spec against. Each viewport produces its own Baseline/Candidate pair per capture step.",
+      "items": {
+        "type": "object",
+        "required": ["width", "height", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stable viewport identifier referenced by visual-verdict (e.g. 'desktop', 'mobile')."
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 320,
+            "description": "Viewport width in CSS pixels."
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 320,
+            "description": "Viewport height in CSS pixels."
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered steps executed identically on Baseline and Candidate. Must include at least one goto and one capture.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "oneOf": [
+          {
+            "description": "Navigate to a URL.",
+            "properties": {
+              "type": {"const": "goto"},
+              "url": {
+                "type": "string",
+                "description": "Absolute URL or path-relative URL (base_url is prepended by the runner). Example: '/dashboard' or 'http://localhost:5173/dashboard'."
+              }
+            },
+            "required": ["type", "url"],
+            "additionalProperties": false
+          },
+          {
+            "description": "Click an element by role/text locator.",
+            "properties": {
+              "type": {"const": "click"},
+              "locator": {
+                "type": "string",
+                "description": "Playwright locator expression (e.g. 'role=button[name=\"Submit\"]', 'text=Sign in', 'css=.nav-link'). Prefer role and text locators over CSS for resilience."
+              }
+            },
+            "required": ["type", "locator"],
+            "additionalProperties": false
+          },
+          {
+            "description": "Fill a form field.",
+            "properties": {
+              "type": {"const": "fill"},
+              "locator": {
+                "type": "string",
+                "description": "Playwright locator for the input field."
+              },
+              "value": {
+                "type": "string",
+                "description": "Text to type into the field."
+              }
+            },
+            "required": ["type", "locator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "description": "Wait for a condition before continuing.",
+            "properties": {
+              "type": {"const": "waitFor"},
+              "condition": {
+                "type": "string",
+                "description": "Wait target. Supported values: 'networkidle', 'load', 'domcontentloaded', or a CSS selector string (waits for the element to be visible). Example: 'networkidle' or '.dashboard-loaded'."
+              }
+            },
+            "required": ["type", "condition"],
+            "additionalProperties": false
+          },
+          {
+            "description": "Capture a screenshot at this point for visual comparison.",
+            "properties": {
+              "type": {"const": "capture"},
+              "name": {
+                "type": "string",
+                "description": "Stable identifier for this capture point. Used as the capture_ref in visual-verdict and as the filename stem for Baseline/Candidate PNGs. Must be unique within the spec (e.g. 'hero', 'nav-bar', 'modal-open')."
+              }
+            },
+            "required": ["type", "name"],
+            "additionalProperties": false
+          },
+          {
+            "description": "Assert a condition about the page. Failing an expect step always blocks the task.",
+            "properties": {
+              "type": {"const": "expect"},
+              "locator": {
+                "type": "string",
+                "description": "Playwright locator for the element under assertion."
+              },
+              "assertion": {
+                "type": "string",
+                "enum": ["visible", "hidden", "text", "count"],
+                "description": "Assertion type. 'visible': element is present and visible. 'hidden': element is absent or invisible. 'text': element's textContent matches value. 'count': count of matching elements equals value."
+              },
+              "value": {
+                "type": "string",
+                "description": "Expected value for 'text' and 'count' assertions. Omit for 'visible' and 'hidden'."
+              }
+            },
+            "required": ["type", "locator", "assertion"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "masks": {
+      "type": "array",
+      "description": "CSS selectors for dynamic page regions to blank out before visual comparison (e.g. timestamps, avatars, live counters). Applied identically to Baseline and Candidate.",
+      "items": {
+        "type": "object",
+        "required": ["selector"],
+        "additionalProperties": false,
+        "properties": {
+          "selector": {
+            "type": "string",
+            "description": "CSS selector for the region to mask. The runner fills matched elements with a solid color block before taking the screenshot."
+          }
+        }
+      }
+    },
+    "expected_visual_change": {
+      "type": ["string", "null"],
+      "enum": ["none", "present", null],
+      "description": "Declared intent: 'none' if no visual change is expected (triggers the zero-diff shortcut when diff is under noise threshold), 'present' if a deliberate visual change was made, null for derived checks where intent is unknown (any visible change resolves to needs_eyes)."
+    }
+  },
+  "examples": [
+    {
+      "role": "anonymous",
+      "viewports": [
+        {"name": "desktop", "width": 1440, "height": 900}
+      ],
+      "steps": [
+        {"type": "goto", "url": "/"},
+        {"type": "waitFor", "condition": "networkidle"},
+        {"type": "capture", "name": "homepage"}
+      ],
+      "masks": [],
+      "expected_visual_change": "none"
+    },
+    {
+      "role": "admin",
+      "viewports": [
+        {"name": "desktop", "width": 1440, "height": 900},
+        {"name": "mobile", "width": 390, "height": 844}
+      ],
+      "steps": [
+        {"type": "goto", "url": "/dashboard"},
+        {"type": "waitFor", "condition": "networkidle"},
+        {"type": "capture", "name": "dashboard-initial"},
+        {"type": "click", "locator": "role=button[name=\"Open settings\"]"},
+        {"type": "waitFor", "condition": ".settings-panel"},
+        {"type": "expect", "locator": "role=dialog", "assertion": "visible"},
+        {"type": "capture", "name": "settings-panel-open"}
+      ],
+      "masks": [
+        {"selector": ".user-avatar"},
+        {"selector": ".last-login-timestamp"}
+      ],
+      "expected_visual_change": "present"
+    }
+  ]
+}

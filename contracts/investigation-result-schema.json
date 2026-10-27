@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "investigation-result-schema",
+  "title": "InvestigationResult",
+  "description": "Unified output contract for all investigator agents (orchestrator + leaf agents). Every agent that verifies a claim emits exactly this shape. schema_version is a hard-cutover field — consumers must reject unknown versions.",
+  "type": "object",
+  "required": ["schema_version", "verdict", "evidence"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Always '1'. Hard-cutover versioning: a schema_version bump signals a breaking change."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["VERIFIED_TRUE", "VERIFIED_FALSE", "INSUFFICIENT_EVIDENCE", "CONTESTED"],
+      "description": "Outcome of the investigation. VERIFIED_TRUE/FALSE require non-empty evidence[]. INSUFFICIENT_EVIDENCE signals that the claim cannot be confirmed or denied with available sources and propagates to the aggregate. CONTESTED signals genuine expert disagreement with no single authoritative answer."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "ref", "quote"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["web", "code", "linear", "github", "notion"],
+            "description": "Evidence source type. Determines the expected ref format: web=URL, code=GitHub blob URL with #L anchor, linear=ticket URL, github=issue/PR URL, notion=page URL or block id."
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable locator for the source. Format depends on source type (see investigation-result-contract.md)."
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim or near-verbatim excerpt from the source that supports or contradicts the claim."
+          }
+        }
+      },
+      "description": "Citations that substantiate the verdict. Non-empty for VERIFIED_TRUE and VERIFIED_FALSE; may be empty for INSUFFICIENT_EVIDENCE and CONTESTED."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional human-readable explanation of the verdict, written by the emitting agent. Required by the orchestrator, optional for leaf agents."
+    },
+    "sub_claim": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional. For leaf agents: the exact sub-claim this result addresses, as decomposed by the orchestrator."
+    },
+    "adjacent_facts": {
+      "type": "array",
+      "description": "Optional. Orchestrator-only. Bounded expansion: adjacent material facts the asker likely needs, each investigated and cited. Facts with no supporting evidence are excluded. Capped at implementation judgment (typically 2–4).",
+      "items": {
+        "type": "object",
+        "required": ["claim", "verdict", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The adjacent fact that was investigated."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["VERIFIED_TRUE", "VERIFIED_FALSE", "INSUFFICIENT_EVIDENCE", "CONTESTED"],
+            "description": "Outcome of the adjacent-fact investigation."
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["source", "ref", "quote"],
+              "additionalProperties": false,
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "enum": ["web", "code", "linear", "github", "notion"]
+                },
+                "ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "description": "Citations for the adjacent fact. Non-empty for VERIFIED_TRUE and VERIFIED_FALSE."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional. Human-readable explanation of the adjacent-fact verdict."
+          }
+        }
+      }
+    },
+    "sub_results": {
+      "type": "array",
+      "description": "Optional. Orchestrator-only. One entry per decomposed sub-claim, copied from that leaf's result. Shows which sub-claims were verified when the aggregate is INSUFFICIENT_EVIDENCE or CONTESTED. Does not change the aggregate verdict or the propagation rule.",
+      "items": {
+        "type": "object",
+        "required": ["sub_claim", "verdict", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "sub_claim": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The sub-claim text, verbatim as passed to the leaf agent."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["VERIFIED_TRUE", "VERIFIED_FALSE", "INSUFFICIENT_EVIDENCE", "CONTESTED"],
+            "description": "The leaf agent's verdict for this sub-claim."
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["source", "ref", "quote"],
+              "additionalProperties": false,
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "enum": ["web", "code", "linear", "github", "notion"]
+                },
+                "ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "description": "The leaf agent's citations for this sub-claim. Non-empty for VERIFIED_TRUE and VERIFIED_FALSE."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional. The leaf agent's summary, if it set one."
+          }
+        },
+        "if": {
+          "properties": {
+            "verdict": {
+              "enum": ["VERIFIED_TRUE", "VERIFIED_FALSE"]
+            }
+          },
+          "required": ["verdict"]
+        },
+        "then": {
+          "properties": {
+            "evidence": {
+              "minItems": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "verdict": {
+        "enum": ["VERIFIED_TRUE", "VERIFIED_FALSE"]
+      }
+    },
+    "required": ["verdict"]
+  },
+  "then": {
+    "properties": {
+      "evidence": {
+        "minItems": 1
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1",
+      "verdict": "VERIFIED_TRUE",
+      "sub_claim": "The function throws on null input.",
+      "evidence": [
+        {
+          "source": "code",
+          "ref": "https://github.com/org/repo/blob/main/src/validators/input.ts#L42",
+          "quote": "if (value === null) throw new Error('null not allowed');"
+        }
+      ],
+      "summary": "The source confirms null inputs raise an error at line 42."
+    },
+    {
+      "schema_version": "1",
+      "verdict": "VERIFIED_FALSE",
+      "sub_claim": "The PR was merged before the incident.",
+      "evidence": [
+        {
+          "source": "github",
+          "ref": "https://github.com/org/repo/pull/88",
+          "quote": "Merged on 2026-08-10T14:32Z — two hours after the incident started."
+        }
+      ],
+      "summary": "The PR merge timestamp post-dates the incident start, so the claim is false."
+    },
+    {
+      "schema_version": "1",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "evidence": [],
+      "summary": "No sources returned relevant information for this sub-claim. The aggregate result must reflect this uncertainty."
+    },
+    {
+      "schema_version": "1",
+      "verdict": "CONTESTED",
+      "evidence": [
+        {
+          "source": "linear",
+          "ref": "https://linear.app/team/issue/ENG-404",
+          "quote": "Alice: 'The bug was introduced in v2.' Bob: 'Reproduces on v1 as well.'"
+        }
+      ],
+      "summary": "Engineers disagree on when the bug was introduced; no single authoritative answer is available."
+    }
+  ]
+}

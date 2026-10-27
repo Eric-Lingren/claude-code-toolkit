@@ -1,0 +1,10 @@
+{"repo":"Org/Cur","bucket":"x","sort":["smallest"],"candidates":[
+{"id":"#1","source":"github","repo":"Org/Cur","title":"t1","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b1","points":1,"parent":null,"project":null,"created_at":"2026-01-01"},
+{"id":"#2","source":"github","repo":"Org/Other","title":"t2","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b2","points":2,"parent":null,"project":null,"created_at":"2026-01-02"},
+{"id":"#3","source":"github","repo":"Org/Cur","title":"t3","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b3","points":3,"parent":null,"project":null,"created_at":"2026-01-03"},
+{"id":"#4","source":"github","repo":"Org/Other","title":"t4","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b4","points":4,"parent":null,"project":null,"created_at":"2026-01-04"},
+{"id":"#5","source":"github","repo":"Org/Cur","title":"t5","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b5","points":5,"parent":null,"project":null,"created_at":"2026-01-05"},
+{"id":"#6","source":"github","repo":"Org/Other","title":"t6","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b6","points":6,"parent":null,"project":null,"created_at":"2026-01-06"},
+{"id":"#7","source":"github","repo":"Org/Cur","title":"t7","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b7","points":7,"parent":null,"project":null,"created_at":"2026-01-07"},
+{"id":"#8","source":"github","repo":"Org/Other","title":"t8","url":"u","labels":[],"assignees":[],"state":"open","blockers":[],"branch":"b8","points":8,"parent":null,"project":null,"created_at":"2026-01-08"}
+]}

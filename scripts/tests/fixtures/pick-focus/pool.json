@@ -1,0 +1,82 @@
+{
+ "issues": {
+  "nodes": [
+   {
+    "identifier": "KEY-10",
+    "title": "small export",
+    "url": "https://linear.app/x/KEY-10",
+    "estimate": 1,
+    "createdAt": "2026-09-01T00:00:00Z",
+    "branchName": "eric/key-10",
+    "state": {
+     "name": "Backlog",
+     "type": "backlog"
+    },
+    "project": {
+     "name": "Exports"
+    },
+    "parent": null,
+    "assignee": null,
+    "labels": {
+     "nodes": []
+    },
+    "attachments": {
+     "nodes": []
+    },
+    "inverseRelations": {
+     "nodes": []
+    }
+   },
+   {
+    "identifier": "KEY-11",
+    "title": "no project",
+    "url": "https://linear.app/x/KEY-11",
+    "estimate": 2,
+    "createdAt": "2026-09-02T00:00:00Z",
+    "branchName": "eric/key-11",
+    "state": {
+     "name": "Backlog",
+     "type": "backlog"
+    },
+    "project": null,
+    "parent": null,
+    "assignee": null,
+    "labels": {
+     "nodes": []
+    },
+    "attachments": {
+     "nodes": []
+    },
+    "inverseRelations": {
+     "nodes": []
+    }
+   },
+   {
+    "identifier": "KEY-12",
+    "title": "big billing",
+    "url": "https://linear.app/x/KEY-12",
+    "estimate": 5,
+    "createdAt": "2026-09-03T00:00:00Z",
+    "branchName": "eric/key-12",
+    "state": {
+     "name": "Backlog",
+     "type": "backlog"
+    },
+    "project": {
+     "name": "Billing"
+    },
+    "parent": null,
+    "assignee": null,
+    "labels": {
+     "nodes": []
+    },
+    "attachments": {
+     "nodes": []
+    },
+    "inverseRelations": {
+     "nodes": []
+    }
+   }
+  ]
+ }
+}

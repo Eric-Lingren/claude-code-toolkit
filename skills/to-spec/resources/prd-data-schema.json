@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "prd-data",
+  "description": "DEPRECATED: Canonical schema has moved to contracts/seed-schema.json. This file is kept for backward compatibility.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "title",
+    "slug",
+    "created",
+    "summary",
+    "decisions",
+    "open_threads",
+    "next_action"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version string, e.g. '2'."
+    },
+    "source": {
+      "type": "string",
+      "description": "Origin of this record: 'to-seed', 'to-spec', or 'manual'."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable PRD title."
+    },
+    "slug": {
+      "type": "string",
+      "description": "Kebab-case slug derived from the title, max ~40 chars."
+    },
+    "created": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when this record was created."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph plain-text summary of the problem and solution."
+    },
+    "decisions": {
+      "type": "array",
+      "description": "Resolved decisions from the session. Each entry is a plain-text string.",
+      "items": { "type": "string" }
+    },
+    "open_threads": {
+      "type": "array",
+      "description": "Unresolved questions or threads that need follow-up.",
+      "items": { "type": "string" }
+    },
+    "next_action": {
+      "type": "string",
+      "description": "The single most important next step after this record is written."
+    },
+    "problem_statement": {
+      "type": "string",
+      "description": "The problem in plain text."
+    },
+    "solution": {
+      "type": "string",
+      "description": "The solution in plain text."
+    },
+    "evidence": {
+      "type": "string",
+      "description": "One or two sentences: the data, complaints, or research that motivated this."
+    },
+    "success_metrics": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "user_stories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["actor", "feature", "benefit"],
+        "properties": {
+          "actor": { "type": "string" },
+          "feature": { "type": "string" },
+          "benefit": { "type": "string" }
+        }
+      }
+    },
+    "implementation_decisions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "testing_decisions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "out_of_scope": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "risks_and_tradeoffs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "further_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

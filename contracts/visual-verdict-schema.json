@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "visual-verdict-schema",
+  "title": "Visual Verdict",
+  "description": "Vision-model judgment of whether the Baseline-to-Candidate visual change matches intent. Produced by the visual-judge agent. One verdict per (capture_ref, viewport) pair. Consumed by browser-checker (embedded in browser-check-result v2 captures[]) and build-runner (blocking/needs_eyes routing).",
+  "type": "object",
+  "required": ["verdict", "rationale", "viewport", "capture_ref", "panel_votes"],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["expected", "regression", "unexpected", "uncertain"],
+      "description": "Final verdict. 'expected': change matches declared intent or zero-diff shortcut applied. 'regression': unintended change detected (desktop regression blocks the task). 'unexpected': change present but not a clear regression (becomes needs_eyes, does not block). 'uncertain': judges could not reach 2-of-3 majority (becomes needs_eyes, does not block)."
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Human-readable explanation of the verdict. For panel verdicts this is the majority's rationale. Fed into the build-runner retry loop on 'regression'."
+    },
+    "viewport": {
+      "type": "string",
+      "description": "Viewport name from the Check Spec (e.g. 'desktop', 'mobile'). Matches the viewport name in check-spec-schema viewports[].name."
+    },
+    "capture_ref": {
+      "type": "string",
+      "description": "Capture name this verdict applies to. Matches the capture step name field in check-spec-schema and the captures[].name field in browser-check-result v2."
+    },
+    "panel_votes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "Individual judge votes. Contains 1 entry for the screener-only path (screener returned 'expected') or 3 entries when the full panel ran (any non-expected screener result). Majority of 3-vote panels determines the final verdict; no majority yields 'uncertain'.",
+      "items": {
+        "type": "object",
+        "required": ["model", "verdict", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model ID of the judge (e.g. 'claude-sonnet-4-5'). Informational — used for calibration."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["expected", "regression", "unexpected", "uncertain"],
+            "description": "This judge's individual verdict."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "This judge's rationale. Delta-only: judges evaluate only the Baseline-to-Candidate change, not pre-existing aesthetics."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "verdict": "expected",
+      "rationale": "Button color changed from gray (#9CA3AF) to brand blue (#2563EB). The diff is confined to the primary action button. No structural or layout changes detected.",
+      "viewport": "desktop",
+      "capture_ref": "dashboard-initial",
+      "panel_votes": [
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "expected",
+          "rationale": "The only visible change is the button color update. This matches the declared expected_visual_change: present and the diff is limited to a single UI element."
+        }
+      ]
+    },
+    {
+      "verdict": "regression",
+      "rationale": "Nav bar collapses on desktop viewport at 1440px. The left sidebar overlaps the main content area. Two of three judges agree this is an unintended layout regression.",
+      "viewport": "desktop",
+      "capture_ref": "settings-panel-open",
+      "panel_votes": [
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "regression",
+          "rationale": "Sidebar overlap on desktop is clearly unintended. Content is obscured."
+        },
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "regression",
+          "rationale": "Desktop layout is broken. The sidebar was not present in the Baseline."
+        },
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "unexpected",
+          "rationale": "Layout changed but unclear if intentional without more context."
+        }
+      ]
+    },
+    {
+      "verdict": "uncertain",
+      "rationale": "Judges could not reach a 2-of-3 majority. Requires human review.",
+      "viewport": "mobile",
+      "capture_ref": "hero",
+      "panel_votes": [
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "expected",
+          "rationale": "Font size change appears intentional for mobile readability."
+        },
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "unexpected",
+          "rationale": "Font change was not expected on mobile only."
+        },
+        {
+          "model": "claude-sonnet-4-5",
+          "verdict": "regression",
+          "rationale": "Text is now smaller on mobile, reducing readability."
+        }
+      ]
+    }
+  ]
+}

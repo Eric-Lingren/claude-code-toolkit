@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRD: {{TITLE}}</title>
+  <style>
+    /* {{THEME_CSS}} */
+    :root {
+      --bg: #1a1a2e;
+      --bg-surface: #22223a;
+      --bg-hover: #2a2a45;
+      --text: #e0e0e8;
+      --text-muted: #9090a8;
+      --text-heading: #f0f0f8;
+      --border: #3a3a55;
+      --accent: #7b8cde;
+      --accent-dim: #5a6aad;
+      --risk-high: #e05555;
+      --risk-med: #e0a030;
+      --risk-low: #50b080;
+      --pill-bg: #2e2e4a;
+      --tab-active: #7b8cde;
+      --tab-inactive: #3a3a55;
+      --check-done: #50b080;
+      --progress-bg: #2e2e4a;
+      --progress-fill: #7b8cde;
+      --font-body: 'Georgia', 'Times New Roman', serif;
+      --font-heading: system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 2rem 1rem;
+      max-width: 75ch;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: var(--text-heading);
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      color: var(--text-heading);
+      margin-bottom: 0.75rem;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      color: var(--text-heading);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .progress-track {
+      background: var(--progress-bg);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 0.4rem;
+    }
+
+    .progress-fill {
+      background: var(--progress-fill);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+
+    .progress-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+    }
+
+    /* TOC */
+    .toc {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .toc-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-heading);
+    }
+
+    .toc a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.25rem 0;
+      font-family: var(--font-heading);
+    }
+
+    .toc a:hover { color: var(--text-heading); }
+
+    .toc .check-indicator {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 3px;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .toc .check-indicator.checked {
+      background: var(--check-done);
+      border-color: var(--check-done);
+    }
+
+    /* Sections */
+    details {
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    summary {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-surface);
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-heading);
+      font-family: var(--font-heading);
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    summary::before {
+      content: '\25B6';
+      font-size: 0.7rem;
+      transition: transform 0.2s;
+      color: var(--text-muted);
+    }
+
+    details[open] > summary::before {
+      transform: rotate(90deg);
+    }
+
+    .section-content {
+      padding: 1rem 1.25rem;
+    }
+
+    /* Review checkbox in summary */
+    .review-check {
+      margin-left: auto;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .review-check:checked {
+      background: var(--check-done);
+      border-color: var(--check-done);
+    }
+
+    .review-check:checked::after {
+      content: '\2713';
+      position: absolute;
+      top: -1px;
+      left: 3px;
+      color: white;
+      font-size: 14px;
+    }
+
+    /* Tabs */
+    .tabs {
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 0;
+    }
+
+    .tab-btn {
+      padding: 0.6rem 1.25rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: var(--font-heading);
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      color: var(--tab-active);
+      border-bottom-color: var(--tab-active);
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 1.25rem 0;
+    }
+
+    .tab-panel.active { display: block; }
+
+    /* Tags / pills */
+    .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      font-family: var(--font-heading);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .tag-high { background: var(--risk-high); color: white; }
+    .tag-med { background: var(--risk-med); color: #1a1a2e; }
+    .tag-low { background: var(--risk-low); color: #1a1a2e; }
+
+    .tag-module {
+      background: var(--pill-bg);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+    }
+
+    /* User stories */
+    .story {
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-surface);
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .story-number {
+      font-family: var(--font-heading);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    /* Decision items */
+    .decision {
+      margin-bottom: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-surface);
+      border-radius: 4px;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .decision-text { flex: 1; }
+
+    /* Lists */
+    ul, ol {
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    p { margin-bottom: 1rem; }
+
+    /* Comparison table (conditional) */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .comparison-col {
+      background: var(--bg-surface);
+      border-radius: 6px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    .comparison-col h3 {
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* SVG diagram area (conditional) */
+    .diagram {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Scope list */
+    .scope-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .scope-item:last-child { border-bottom: none; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      body { padding: 1rem 0.75rem; }
+      .comparison { grid-template-columns: 1fr; }
+      .tab-btn { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>{{TITLE}}</h1>
+  <div class="subtitle">{{SLUG}} &middot; {{DATE}}</div>
+
+  <!-- Review progress bar -->
+  <div class="progress-bar">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">0 / 0 sections reviewed</div>
+  </div>
+
+  <!-- Table of contents -->
+  <nav class="toc">
+    <div class="toc-title">Contents</div>
+    <!--
+      For each section, add a link:
+      <a href="#section-id"><span class="check-indicator" data-toc-for="section-id"></span> Section Name</a>
+    -->
+    {{TOC_LINKS}}
+  </nav>
+
+  <!--
+    SECTION TEMPLATE:
+
+    <details open id="section-id">
+      <summary>
+        Section Title
+        <input type="checkbox" class="review-check" data-section="section-id" onclick="updateProgress()">
+      </summary>
+      <div class="section-content">
+        ... content here ...
+      </div>
+    </details>
+
+    REQUIRED SECTIONS:
+    1. problem-statement
+    2. solution
+    3. core-content (contains the tabbed view for user stories / implementation / testing)
+    4. out-of-scope
+    5. further-notes
+
+    CONDITIONAL SECTIONS:
+    6. architecture (only if 3+ modules with non-trivial relationships)
+    7. alternatives (only if trade-offs were considered)
+  -->
+
+  <!-- Section: Problem Statement -->
+  <details open id="problem-statement">
+    <summary>
+      Problem Statement
+      <input type="checkbox" class="review-check" data-section="problem-statement" onclick="updateProgress()">
+    </summary>
+    <div class="section-content">
+      {{PROBLEM_STATEMENT}}
+    </div>
+  </details>
+
+  <!-- Section: Solution -->
+  <details open id="solution">
+    <summary>
+      Solution
+      <input type="checkbox" class="review-check" data-section="solution" onclick="updateProgress()">
+    </summary>
+    <div class="section-content">
+      {{SOLUTION}}
+    </div>
+  </details>
+
+  <!-- Section: Core Content (Tabbed) -->
+  <details open id="core-content">
+    <summary>
+      Specification
+      <input type="checkbox" class="review-check" data-section="core-content" onclick="updateProgress()">
+    </summary>
+    <div class="section-content">
+      <div class="tabs">
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchTab(event, 'tab-stories')">User Stories</button>
+          <button class="tab-btn" onclick="switchTab(event, 'tab-implementation')">Implementation</button>
+          <button class="tab-btn" onclick="switchTab(event, 'tab-testing')">Testing</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-stories">
+          <!--
+            For each user story:
+            <div class="story">
+              <div class="story-number">Story #N</div>
+              As a <strong>actor</strong>, I want <strong>feature</strong>, so that <strong>benefit</strong>.
+            </div>
+          -->
+          {{USER_STORIES}}
+        </div>
+
+        <div class="tab-panel" id="tab-implementation">
+          <!--
+            For each decision:
+            <div class="decision">
+              <span class="tag tag-high">HIGH</span>  (or tag-med, tag-low)
+              <div class="decision-text">Decision text here</div>
+            </div>
+
+            For module references, use:
+            <span class="tag tag-module">ModuleName</span>
+          -->
+          {{IMPLEMENTATION_DECISIONS}}
+        </div>
+
+        <div class="tab-panel" id="tab-testing">
+          {{TESTING_DECISIONS}}
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!--
+    CONDITIONAL: Architecture Diagram
+    Include this section ONLY when there are 3+ modules with non-trivial relationships.
+
+    <details open id="architecture">
+      <summary>
+        Architecture
+        <input type="checkbox" class="review-check" data-section="architecture" onclick="updateProgress()">
+      </summary>
+      <div class="section-content">
+        <div class="diagram">
+          <svg>... inline SVG diagram ...</svg>
+        </div>
+      </div>
+    </details>
+  -->
+
+  <!--
+    CONDITIONAL: Alternatives Considered
+    Include this section ONLY when trade-offs or alternatives were discussed.
+
+    <details open id="alternatives">
+      <summary>
+        Alternatives Considered
+        <input type="checkbox" class="review-check" data-section="alternatives" onclick="updateProgress()">
+      </summary>
+      <div class="section-content">
+        <div class="comparison">
+          <div class="comparison-col">
+            <h3>Option A</h3>
+            <p>Description...</p>
+            <ul><li>Pro 1</li></ul>
+          </div>
+          <div class="comparison-col">
+            <h3>Option B</h3>
+            <p>Description...</p>
+            <ul><li>Pro 1</li></ul>
+          </div>
+        </div>
+      </div>
+    </details>
+  -->
+
+  <!-- Section: Out of Scope -->
+  <details open id="out-of-scope">
+    <summary>
+      Out of Scope
+      <input type="checkbox" class="review-check" data-section="out-of-scope" onclick="updateProgress()">
+    </summary>
+    <div class="section-content">
+      <!--
+        <div class="scope-item">Item explicitly not being built</div>
+      -->
+      {{OUT_OF_SCOPE}}
+    </div>
+  </details>
+
+  <!-- Section: Further Notes -->
+  <details open id="further-notes">
+    <summary>
+      Further Notes
+      <input type="checkbox" class="review-check" data-section="further-notes" onclick="updateProgress()">
+    </summary>
+    <div class="section-content">
+      {{FURTHER_NOTES}}
+    </div>
+  </details>
+
+  <!-- Machine-readable PRD data for /to-tasks -->
+  <script type="application/json" id="prd-data">
+  {{PRD_JSON}}
+  </script>
+
+  <script>
+    function switchTab(e, tabId) {
+      const tabs = e.target.closest('.tabs');
+      tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      tabs.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      e.target.classList.add('active');
+      tabs.querySelector('#' + tabId).classList.add('active');
+    }
+
+    function updateProgress() {
+      const checks = document.querySelectorAll('.review-check');
+      const checked = document.querySelectorAll('.review-check:checked');
+      const total = checks.length;
+      const done = checked.length;
+      const pct = total > 0 ? (done / total) * 100 : 0;
+
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressLabel').textContent = done + ' / ' + total + ' sections reviewed';
+
+      document.querySelectorAll('[data-toc-for]').forEach(indicator => {
+        const sectionId = indicator.getAttribute('data-toc-for');
+        const sectionCheck = document.querySelector('.review-check[data-section="' + sectionId + '"]');
+        if (sectionCheck && sectionCheck.checked) {
+          indicator.classList.add('checked');
+        } else {
+          indicator.classList.remove('checked');
+        }
+      });
+    }
+
+    updateProgress();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "learning-schema",
+  "title": "Learning Entry v2",
+  "description": "A single learning entry (self or attribution) appended by log-learning.py. schema_version, id, and timestamp are injected server-side; callers must not supply them.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "timestamp",
+    "type",
+    "reported_by",
+    "improves_type",
+    "cause",
+    "problem",
+    "why_missed",
+    "lesson",
+    "fix",
+    "evidence",
+    "confidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2",
+      "description": "Always '2'. Injected by log-learning.py."
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4. Injected by log-learning.py."
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+      "description": "ISO 8601 UTC. Injected by log-learning.py."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["self", "attribution"],
+      "description": "'self' for intra-skill learnings; 'attribution' for cross-skill escape-point findings."
+    },
+    "reported_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Slug of the skill/agent that captured this entry."
+    },
+    "improves": {
+      "type": ["string", "null"],
+      "description": "Slug of the skill/agent/process/contract to improve. Null when attribution is uncertain."
+    },
+    "improves_type": {
+      "type": "string",
+      "enum": ["skill", "agent", "process", "contract"],
+      "description": "Category of the thing being improved."
+    },
+    "cause": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Open-vocab cause label. Known values: requirement_lost_between_docs, context_lost_in_handoff, requirement_never_elicited, intentionally_descoped, data_contract_gap, general_best_practice, other."
+    },
+    "cause_label": {
+      "type": ["string", "null"],
+      "description": "Required non-null snake_case string when cause=='other'; null otherwise."
+    },
+    "problem": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What went wrong — run-scoped, observable."
+    },
+    "why_missed": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why the problem was not caught earlier in the pipeline."
+    },
+    "lesson": {
+      "type": "string",
+      "minLength": 1,
+      "description": "General reusable rule that must hold beyond this run."
+    },
+    "fix": {
+      "type": ["string", "null"],
+      "description": "Concrete edit to a skill or script that would prevent recurrence."
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source", "ref", "quote"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["transcript", "artifact"],
+            "description": "'transcript' for session transcript spans; 'artifact' for seed/tasks/diff/SKILL.md."
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Path or URL to the source file."
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim or near-verbatim excerpt confirming the anchor."
+          }
+        }
+      },
+      "description": "Discrete quoted anchors from transcript or artifact files."
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seed": {"type": "string"},
+        "tasks": {"type": "string"},
+        "task_id": {"type": "string"},
+        "pr": {"type": "string"},
+        "branch": {"type": "string"}
+      },
+      "description": "Provenance chain pointers (attribution records only)."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["confirmed", "candidate"],
+      "description": "'confirmed' when evidence is direct; 'candidate' when the link is inferred."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["captured", "applied", "stale", "invalid"],
+      "description": "Lifecycle state. Optional; set by improve-skill-benchmarks when fix is applied. 'stale' = superseded by newer learning; 'invalid' = grounding failed or entry is incorrect."
+    }
+  },
+  "if": {
+    "properties": {
+      "cause": {"const": "other"}
+    },
+    "required": ["cause"]
+  },
+  "then": {
+    "properties": {
+      "cause_label": {"type": "string", "minLength": 1}
+    },
+    "required": ["cause_label"]
+  },
+  "else": {
+    "properties": {
+      "cause_label": {"type": "null"}
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "2",
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "timestamp": "2026-06-05T12:00:00Z",
+      "type": "self",
+      "reported_by": "debug",
+      "improves": "debug",
+      "improves_type": "skill",
+      "cause": "general_best_practice",
+      "cause_label": null,
+      "problem": "Did not check for jq availability before piping.",
+      "why_missed": "Skill assumed jq is always present.",
+      "lesson": "Check for jq with 'which jq' before using it; fall back to python -m json.tool.",
+      "fix": "Add jq check at start of any step that pipes to jq.",
+      "evidence": [
+        {
+          "source": "transcript",
+          "ref": "/tmp/session.md",
+          "quote": "Bash tool returned 'command not found: jq'"
+        }
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "schema_version": "2",
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "timestamp": "2026-06-05T13:00:00Z",
+      "type": "attribution",
+      "reported_by": "debug",
+      "improves": "to-tasks",
+      "improves_type": "skill",
+      "cause": "requirement_lost_between_docs",
+      "cause_label": null,
+      "problem": "Acceptance criterion from seed was not carried into tasks file.",
+      "why_missed": "to-tasks did not cross-reference the seed for implicit constraints.",
+      "lesson": "to-tasks must check seed for criteria not yet in the PRD.",
+      "fix": "Add a seed cross-reference step to to-tasks SKILL.md.",
+      "evidence": [
+        {
+          "source": "artifact",
+          "ref": "docs/seeds/20260605-foo.json",
+          "quote": "criterion X is listed under decisions"
+        }
+      ],
+      "trace": {
+        "seed": "docs/seeds/20260605-foo.json",
+        "branch": "feat/bar"
+      },
+      "confidence": "candidate"
+    }
+  ]
+}

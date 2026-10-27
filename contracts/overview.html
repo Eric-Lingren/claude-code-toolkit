@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Architecture Contracts</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9;
+         padding: 48px 60px; max-width: 2000px; }
+
+  h1 { font-size: 18px; color: #f0f6fc; margin-bottom: 28px; }
+
+  .mermaid { margin: 8px 0 16px; }
+  .note { background: #161b22; border-left: 3px solid #30363d;
+          padding: 8px 12px; font-size: 11px; color: #8b949e; margin: 4px 0 20px; }
+</style>
+</head>
+<body>
+
+<h1>Skill Architecture Contracts</h1>
+<div class="mermaid">
+flowchart TD
+    subgraph Planning["Planning"]
+        conv([conversation])
+        proto(["/prototype"])
+        grill["/grill-me"]
+        grillD["/grill-with-docs"]
+        toSeed["/to-seed"]
+        seedFile[(seed.json)]
+        toPrd["/to-spec"]
+        htmlPrd[(HTML PRD)]
+
+        conv --> grill --> toSeed
+        conv --> grillD --> toSeed
+        proto -. opt .-> seedFile
+        toSeed --> seedFile
+        seedFile --> toPrd --> htmlPrd
+    end
+
+    subgraph Tasking["Tasking"]
+        toTasks["/to-tasks"]
+        toE2e["/to-e2e-tasks"]
+        debug["/debug"]
+        ic["/improve-component"]
+        cr["/pr-code-review"]
+        taskFile[(task.json)]
+
+        toTasks --> taskFile
+        toE2e --> taskFile
+        debug -.-> taskFile
+        ic --> taskFile
+        cr -.-> taskFile
+    end
+
+    subgraph Execution["Execution"]
+        lint["/lint-runner"]
+        test["/test-runner"]
+        e2e["/e2e-runner"]
+        verdict[(verdict)]
+        runTasks["/run-tasks"]
+        fu["/run-task-followups"]
+
+        lint --> verdict
+        test --> verdict
+        e2e --> verdict
+        verdict --> runTasks
+    end
+
+    subgraph Triaging["Triaging"]
+        lin["/tasks-to-linear"]
+    end
+
+    seedFile --> toTasks
+    htmlPrd -. extract .-> toTasks
+    taskFile --> runTasks
+    taskFile --> fu
+    taskFile --> lin
+
+    seedSchema[[seed-schema.json]] -. validates .-> seedFile
+    taskSchema[[task-schema.json]] -. validates .-> taskFile
+    runnerSchema[[runner-result-schema.json]] -. validates .-> verdict
+
+    classDef skill fill:#0d1117,stroke:#30363d,color:#c9d1d9
+    classDef sfmt fill:#0d1f0d,stroke:#3fb950,color:#3fb950
+    classDef tfmt fill:#0d1525,stroke:#58a6ff,color:#58a6ff
+    classDef rfmt fill:#1f0d0d,stroke:#ff7b72,color:#ff7b72
+    classDef src fill:#1a1a0d,stroke:#e3b341,color:#e3b341
+    classDef schema fill:#1a0d1a,stroke:#a371f7,color:#a371f7
+
+    class seedFile,htmlPrd sfmt
+    class taskFile tfmt
+    class verdict rfmt
+    class conv,proto src
+    class toSeed,toPrd,toTasks,toE2e,debug,ic,cr,runTasks,fu,lin,lint,test,e2e,grill,grillD skill
+    class seedSchema,taskSchema,runnerSchema schema
+</div>
+<div class="note">Dashed arrows = conditional. Cylinders = contracted formats. Purple subroutines = JSON Schema contracts.</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark', fontSize: 20 });
+</script>
+</body>
+</html>

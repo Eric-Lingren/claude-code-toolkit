@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sprout-handoff-schema",
+  "title": "Sprout Phase Handoff",
+  "description": "Phase handoff file written to docs/tasks/.sprout/ by a sprout subagent after completing its phase. Both the subagent write-side and the orchestrator read-side validate against this schema.",
+  "type": "object",
+  "required": ["phase", "paths", "status", "errors"],
+  "additionalProperties": false,
+  "properties": {
+    "phase": {
+      "type": "string",
+      "description": "Name of the sprout phase that produced this handoff (e.g. 'context', 'seed', 'tasks')."
+    },
+    "paths": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "File paths produced or modified by this phase. Empty array when the phase produces no files."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failed", "skipped"],
+      "description": "Outcome of the phase. 'success': phase completed and files are ready. 'failed': phase encountered an error. 'skipped': phase was intentionally not run."
+    },
+    "errors": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Error messages from this phase. Empty array on success or skipped; one or more messages on failed."
+    }
+  },
+  "examples": [
+    {
+      "phase": "seed",
+      "paths": ["docs/seeds/20260828-1641-sprout-seed-v2.json"],
+      "status": "success",
+      "errors": []
+    },
+    {
+      "phase": "tasks",
+      "paths": [],
+      "status": "failed",
+      "errors": ["to-tasks skill exited with non-zero status: schema validation failed"]
+    },
+    {
+      "phase": "context",
+      "paths": [],
+      "status": "skipped",
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "verdict-schema",
+  "title": "Verdict batch",
+  "description": "The judge's full response: a JSON array of verdicts, one per refutation in the batch it received. Round 1 runs one judge over all refutations; round 2 runs three judges over the upheld subset and applies a 2-of-3 majority per ref_id. On unrecoverable failure, the judge returns a single-element array carrying an error-form object.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "oneOf": [
+      {
+        "title": "Verdict (normal form)",
+        "type": "object",
+        "required": ["ref_id", "verdict", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "description": "Stable id of the refutation being judged, echoed from the input batch."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["upheld", "rejected"],
+            "description": "'upheld' if the refutation is supported by evidence-pack evidence; 'rejected' otherwise."
+          },
+          "reason": {
+            "type": "string",
+            "description": "One sentence explaining the decision, citing the specific span or the absence of one."
+          }
+        }
+      },
+      {
+        "title": "Error form",
+        "type": "object",
+        "required": ["error"],
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Short description of the unrecoverable failure."
+          },
+          "details": {
+            "type": "string",
+            "description": "Optional: additional context."
+          }
+        }
+      }
+    ]
+  },
+  "examples": [
+    [
+      {"ref_id": "r0", "verdict": "upheld", "reason": "Pack section r0 shows the span contradicting decisions[2]."},
+      {"ref_id": "r1", "verdict": "rejected", "reason": "Pack section r1 is SPAN NOT FOUND; unsupported."}
+    ]
+  ]
+}

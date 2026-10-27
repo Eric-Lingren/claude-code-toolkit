@@ -1,0 +1,41 @@
+{
+  "issues": {
+    "nodes": [
+      {
+        "identifier": "KEY-101", "title": "Trim empty rows from export", "url": "https://linear.app/example/issue/KEY-101",
+        "estimate": 2, "createdAt": "2026-09-01T10:00:00.000Z", "branchName": "eric/key-101-trim-empty-rows-from-export",
+        "state": {"name": "Ready to Assign", "type": "backlog"},
+        "project": {"name": "Exports"}, "parent": {"identifier": "KEY-90"},
+        "assignee": null,
+        "labels": {"nodes": [{"name": "Feature"}]},
+        "attachments": {"nodes": []},
+        "inverseRelations": {"nodes": []}
+      },
+      {
+        "identifier": "KEY-102", "title": "Add retry to sync job", "url": "https://linear.app/example/issue/KEY-102",
+        "estimate": null, "createdAt": "2026-09-02T10:00:00.000Z", "branchName": "eric/key-102-add-retry-to-sync-job",
+        "state": {"name": "Backlog", "type": "backlog"},
+        "project": null, "parent": null,
+        "assignee": {"name": "Eric Lingren"},
+        "labels": {"nodes": []},
+        "attachments": {"nodes": [{"url": "https://github.com/example/repo/pull/77", "sourceType": "github"}]},
+        "inverseRelations": {"nodes": []}
+      },
+      {
+        "identifier": "KEY-103", "title": "Follow-on column work", "url": "https://linear.app/example/issue/KEY-103",
+        "estimate": 1, "createdAt": "2026-09-03T10:00:00.000Z", "branchName": "eric/key-103-follow-on-column-work",
+        "state": {"name": "Ready to Assign", "type": "backlog"},
+        "project": {"name": "Exports"}, "parent": null,
+        "assignee": null,
+        "labels": {"nodes": [{"name": "Bug"}]},
+        "attachments": {"nodes": []},
+        "inverseRelations": {"nodes": [
+          {"type": "blocks", "issue": {"identifier": "KEY-100", "state": {"name": "In Review", "type": "started"},
+            "attachments": {"nodes": [{"url": "https://github.com/example/repo/pull/76", "sourceType": "github"}]}}},
+          {"type": "blocks", "issue": {"identifier": "KEY-99", "state": {"name": "Done", "type": "completed"}, "attachments": {"nodes": []}}},
+          {"type": "related", "issue": {"identifier": "KEY-98", "state": {"name": "Todo", "type": "unstarted"}, "attachments": {"nodes": []}}}
+        ]}
+      }
+    ]
+  }
+}

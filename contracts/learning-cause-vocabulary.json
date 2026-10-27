@@ -1,0 +1,33 @@
+{
+  "_comment": "Open-vocabulary cause seed list for learning-schema.json. Use one of these values in the 'cause' field, or 'other' with a snake_case cause_label for novel patterns.",
+  "known_causes": [
+    {
+      "value": "requirement_lost_between_docs",
+      "description": "A requirement was present in an upstream doc (seed, PRD) but was not carried into a downstream doc (tasks, SKILL.md)."
+    },
+    {
+      "value": "context_lost_in_handoff",
+      "description": "Context was present in a conversation or session but was not persisted across a skill-to-skill handoff."
+    },
+    {
+      "value": "requirement_never_elicited",
+      "description": "A requirement was never surfaced during planning; it only became visible at implementation time."
+    },
+    {
+      "value": "intentionally_descoped",
+      "description": "The requirement was knowingly deferred or cut, and the learning captures that this was a mistake or should be tracked."
+    },
+    {
+      "value": "data_contract_gap",
+      "description": "A schema, interface, or data contract was missing a field or constraint that should have been there."
+    },
+    {
+      "value": "general_best_practice",
+      "description": "A general engineering or process best practice was violated; not tied to a specific handoff failure."
+    },
+    {
+      "value": "other",
+      "description": "Novel cause not covered above. Requires a non-null cause_label in snake_case. Recurring labels are candidates for promotion to named values."
+    }
+  ]
+}

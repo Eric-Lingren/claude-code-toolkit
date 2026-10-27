@@ -1,0 +1,5 @@
+[
+  {"number": 301, "title": "Ready thing", "body": "", "labels": [{"name": "polish"}], "assignees": [], "url": "https://x/301", "createdAt": "2026-09-03T10:00:00Z", "state": "OPEN"},
+  {"number": 302, "title": "Stackable thing", "body": "", "labels": [{"name": "polish"}], "assignees": [], "url": "https://x/302", "createdAt": "2026-09-01T10:00:00Z", "state": "OPEN"},
+  {"number": 303, "title": "Blocked thing", "body": "", "labels": [{"name": "polish"}], "assignees": [], "url": "https://x/303", "createdAt": "2026-09-01T11:00:00Z", "state": "OPEN"}
+]

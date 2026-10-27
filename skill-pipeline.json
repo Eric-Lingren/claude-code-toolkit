@@ -1,0 +1,132 @@
+{
+  "_comment": "Workflow DAG for the shared skill pipeline. Consumed by inject-learning-tail.py to bake each skill's closing next-step suggestion. Shape: skills[slug].next is an array of {skill, when} edges. Terminal skills have next: []. The injector validates that every slug in 'next' exists as a directory under claude-code-shared/skills/.",
+  "skills": {
+    "pick": {
+      "next": [
+        {"skill": "grill-me", "when": "ticket chosen, start a new session and grill it"}
+      ]
+    },
+    "grill-me": {
+      "next": [
+        {"skill": "to-seed", "when": "decisions are crisp and ready to capture"}
+      ]
+    },
+    "grill-with-docs": {
+      "next": [
+        {"skill": "to-seed", "when": "decisions are crisp and ready to capture"}
+      ]
+    },
+    "to-seed": {
+      "next": [
+        {"skill": "to-tasks", "when": "ready to implement without a formal PRD"},
+        {"skill": "to-spec", "when": "want a richer PRD before tasking"},
+        {"skill": "prototype", "when": "exploring the idea first"}
+      ]
+    },
+    "to-spec": {
+      "next": [
+        {"skill": "to-tasks", "when": "PRD is approved and ready to break into tasks"}
+      ]
+    },
+    "to-tasks": {
+      "next": [
+        {"skill": "dispatch-tasks", "when": "tasks are ready to execute"}
+      ]
+    },
+    "build-code": {
+      "next": [
+        {"skill": "run-task-followups", "when": "all tasks are done and FU-001 cleanup is ready"},
+        {"skill": "to-e2e-tasks", "when": "want e2e coverage for the completed changes (optional)"}
+      ]
+    },
+    "dispatch-tasks": {
+      "next": [
+        {"skill": "run-task-followups", "when": "all branches are done and FU-001 cleanup is ready"},
+        {"skill": "to-e2e-tasks", "when": "want e2e coverage for the completed changes (optional)"}
+      ]
+    },
+    "to-e2e-tasks": {
+      "next": [
+        {"skill": "dispatch-tasks", "when": "e2e tasks file is written and ready to implement"}
+      ]
+    },
+    "prototype": {
+      "next": [
+        {"skill": "to-seed", "when": "prototype confirmed the approach and ready to capture decisions"}
+      ]
+    },
+    "pr-revise": {
+      "next": [
+        {"skill": "to-tasks", "when": "the seed is written and ready to break into code + reply tasks"}
+      ]
+    },
+    "relay": {
+      "next": []
+    },
+    "investigate": {
+      "next": []
+    },
+    "debug": {
+      "next": [
+        {"skill": "dispatch-tasks", "when": "tasks file is written and ready to execute fixes"},
+        {"skill": "run-task-followups", "when": "build-code is done and FU-001 cleanup is ready"},
+        {"skill": "to-e2e-tasks", "when": "want e2e coverage after fixes land (optional)"}
+      ]
+    },
+    "pr-code-review": {
+      "next": [
+        { "skill": "dispatch-tasks", "when": "start a new session and pass it the absolute task file path to fix the findings" }
+      ]
+    },
+    "improve-skill-benchmarks": {
+      "next": []
+    },
+    "improve-skill-learnings": {
+      "next": []
+    },
+    "tdd": {
+      "next": []
+    },
+    "handoff": {
+      "next": []
+    },
+    "find-work": {
+      "next": []
+    },
+    "cc-usage-analytics": {
+      "next": []
+    },
+    "clean-scaffolding": {
+      "next": []
+    },
+    "how-to": {
+      "next": []
+    },
+    "improve-codebase-architecture": {
+      "next": []
+    },
+    "improve-component": {
+      "next": [
+        {"skill": "dispatch-tasks", "when": "tasks file is written and ready to execute"}
+      ]
+    },
+    "register-skill": {
+      "next": []
+    },
+    "run-task-followups": {
+      "next": []
+    },
+    "tasks-to-linear": {
+      "next": []
+    },
+    "tldr-tech": {
+      "next": []
+    },
+    "worktree": {
+      "next": []
+    },
+    "ci-fix": {
+      "next": []
+    }
+  }
+}

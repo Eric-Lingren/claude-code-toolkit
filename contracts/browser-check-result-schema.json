@@ -1,0 +1,243 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "browser-check-result-schema",
+  "title": "Browser Check Result v2",
+  "description": "JSON contract returned by the browser-checker agent to its caller (build-runner, debug). v2 adds visual evidence: per-capture Baseline/Candidate PNG pairs, diff ratio, diff heatmap, and optional visual verdicts. Step results replace the v1 assertions field. The version field is the v1/v2 discriminator.",
+  "type": "object",
+  "required": ["version", "status", "url", "captures", "step_results", "console_errors", "artifacts_dir", "skipped_reason"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2",
+      "description": "Schema version. Always '2'. v1 files (no version field) remain valid under resources/browser-check-result.md but are not validated by this schema."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail", "skipped"],
+      "description": "Overall outcome. 'pass': all step_results passed and no blocking visual regressions. 'fail': one or more step_results failed or a desktop regression verdict was reached. 'skipped': Playwright not available or server unreachable."
+    },
+    "url": {
+      "type": "string",
+      "description": "Full URL that was checked (base_url + first goto path)."
+    },
+    "captures": {
+      "type": "array",
+      "description": "One entry per capture step executed in the spec, per viewport. If the spec has two viewports and one capture step, there are two entries. Absent for skipped runs.",
+      "items": {
+        "type": "object",
+        "required": ["name", "viewport", "baseline_png", "candidate_png", "diff_ratio", "diff_heatmap", "visual_verdict"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Capture name from the check spec's capture step. Matches visual-verdict capture_ref."
+          },
+          "viewport": {
+            "type": "string",
+            "description": "Viewport name from the check spec (e.g. 'desktop', 'mobile'). Matches visual-verdict viewport."
+          },
+          "baseline_png": {
+            "type": ["string", "null"],
+            "description": "Absolute path to the Baseline PNG (merge-base render). Null when no baseline was available (first run for this spec/SHA pair or cache miss)."
+          },
+          "candidate_png": {
+            "type": ["string", "null"],
+            "description": "Absolute path to the Candidate PNG (feature branch render). Null only on skipped runs."
+          },
+          "diff_ratio": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Fraction of pixels that differ between Baseline and Candidate (0.0 = identical, 1.0 = completely different). Null when either PNG is absent. Signal only — never a pass/fail gate."
+          },
+          "diff_heatmap": {
+            "type": ["string", "null"],
+            "description": "Absolute path to the diff heatmap PNG (pixels highlighted by change magnitude). Null when baseline_png or candidate_png is absent."
+          },
+          "visual_verdict": {
+            "description": "Vision-model judgment for this capture. Null when the zero-diff shortcut applied (diff_ratio under noise threshold and expected_visual_change is 'none'), when baseline_png is absent, or when the check was skipped.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": ["verdict", "rationale", "viewport", "capture_ref", "panel_votes"],
+                "additionalProperties": false,
+                "properties": {
+                  "verdict": {
+                    "type": "string",
+                    "enum": ["expected", "regression", "unexpected", "uncertain"]
+                  },
+                  "rationale": {
+                    "type": "string"
+                  },
+                  "viewport": {
+                    "type": "string"
+                  },
+                  "capture_ref": {
+                    "type": "string"
+                  },
+                  "panel_votes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "object",
+                      "required": ["model", "verdict", "rationale"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "model": {"type": "string"},
+                        "verdict": {
+                          "type": "string",
+                          "enum": ["expected", "regression", "unexpected", "uncertain"]
+                        },
+                        "rationale": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "step_results": {
+      "type": "array",
+      "description": "One entry per executed step (all step types: goto, click, fill, waitFor, capture, expect). Replaces v1 assertions[]. A failed expect step sets status to 'fail' and always blocks the task.",
+      "items": {
+        "type": "object",
+        "required": ["description", "passed"],
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the step (e.g. 'goto /dashboard', 'click \"Open settings\"', 'expect role=dialog visible')."
+          },
+          "passed": {
+            "type": "boolean",
+            "description": "Whether this step completed without error."
+          },
+          "detail": {
+            "type": ["string", "null"],
+            "description": "Failure detail, DOM/screenshot excerpt, or locator that could not be found. Omitted (null) on pass."
+          }
+        }
+      }
+    },
+    "console_errors": {
+      "type": "array",
+      "description": "console.error and unhandled rejection messages captured during the run. Empty array if none.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifacts_dir": {
+      "type": ["string", "null"],
+      "description": "Absolute path to the run directory (docs/browser-checks/YYYYMMDD-HHMM-<slug>/) containing all PNGs and the manifest JSON. Null on clean pass with no kept evidence (expected with expected_visual_change 'none'). Non-null when any capture is kept (intentional change, unexpected, uncertain, regression) or on fail/skipped."
+    },
+    "skipped_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable reason when status is 'skipped'. Null otherwise."
+    }
+  },
+  "examples": [
+    {
+      "version": "2",
+      "status": "pass",
+      "url": "http://localhost:5173/dashboard",
+      "captures": [
+        {
+          "name": "dashboard-initial",
+          "viewport": "desktop",
+          "baseline_png": null,
+          "candidate_png": "/Users/eric/.cache/claude-browser-verify/run-abc/desktop-dashboard-initial-candidate.png",
+          "diff_ratio": null,
+          "diff_heatmap": null,
+          "visual_verdict": null
+        }
+      ],
+      "step_results": [
+        {"description": "goto /dashboard", "passed": true, "detail": null},
+        {"description": "waitFor networkidle", "passed": true, "detail": null},
+        {"description": "capture dashboard-initial", "passed": true, "detail": null}
+      ],
+      "console_errors": [],
+      "artifacts_dir": null,
+      "skipped_reason": null
+    },
+    {
+      "version": "2",
+      "status": "pass",
+      "url": "http://localhost:5173/dashboard",
+      "captures": [
+        {
+          "name": "dashboard-initial",
+          "viewport": "desktop",
+          "baseline_png": "/Users/eric/.cache/claude-browser-verify/baseline/desktop-dashboard-initial.png",
+          "candidate_png": "/Users/eric/.cache/claude-browser-verify/run-def/desktop-dashboard-initial-candidate.png",
+          "diff_ratio": 0.0,
+          "diff_heatmap": "/Users/eric/.cache/claude-browser-verify/run-def/desktop-dashboard-initial-heatmap.png",
+          "visual_verdict": null
+        }
+      ],
+      "step_results": [
+        {"description": "goto /dashboard", "passed": true, "detail": null},
+        {"description": "waitFor networkidle", "passed": true, "detail": null},
+        {"description": "capture dashboard-initial", "passed": true, "detail": null}
+      ],
+      "console_errors": [],
+      "artifacts_dir": null,
+      "skipped_reason": null
+    },
+    {
+      "version": "2",
+      "status": "fail",
+      "url": "http://localhost:5173/dashboard",
+      "captures": [
+        {
+          "name": "settings-panel-open",
+          "viewport": "desktop",
+          "baseline_png": "/Users/eric/.cache/claude-browser-verify/baseline/desktop-settings-panel-open.png",
+          "candidate_png": "/Users/eric/.cache/claude-browser-verify/run-ghi/desktop-settings-panel-open-candidate.png",
+          "diff_ratio": 0.142,
+          "diff_heatmap": "/Users/eric/project/docs/browser-checks/20260930-1200-dashboard/desktop-settings-panel-open-heatmap.png",
+          "visual_verdict": {
+            "verdict": "regression",
+            "rationale": "Nav bar collapses on desktop. Sidebar overlaps main content.",
+            "viewport": "desktop",
+            "capture_ref": "settings-panel-open",
+            "panel_votes": [
+              {"model": "claude-sonnet-4-5", "verdict": "regression", "rationale": "Sidebar overlap is unintended."},
+              {"model": "claude-sonnet-4-5", "verdict": "regression", "rationale": "Layout is broken on desktop."},
+              {"model": "claude-sonnet-4-5", "verdict": "unexpected", "rationale": "Unclear if intentional."}
+            ]
+          }
+        }
+      ],
+      "step_results": [
+        {"description": "goto /dashboard", "passed": true, "detail": null},
+        {"description": "waitFor networkidle", "passed": true, "detail": null},
+        {"description": "click \"Open settings\"", "passed": true, "detail": null},
+        {"description": "expect role=dialog visible", "passed": false, "detail": "Element with role 'dialog' not found after 5000ms. DOM snapshot: <div class=\"page\">...</div>"}
+      ],
+      "console_errors": [
+        "TypeError: Cannot read properties of undefined (reading 'open') at SettingsPanel.tsx:88"
+      ],
+      "artifacts_dir": "/Users/eric/project/docs/browser-checks/20260930-1200-dashboard",
+      "skipped_reason": null
+    },
+    {
+      "version": "2",
+      "status": "skipped",
+      "url": "http://localhost:5173/dashboard",
+      "captures": [],
+      "step_results": [],
+      "console_errors": [],
+      "artifacts_dir": null,
+      "skipped_reason": "Playwright module not found in project node_modules or global install"
+    }
+  ]
+}

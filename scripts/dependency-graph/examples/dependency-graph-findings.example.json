@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    { "id": "a1", "path": "core/a1.sh", "type": "script", "cluster": "core" },
+    { "id": "a2", "path": "core/a2.sh", "type": "script", "cluster": "core" },
+    { "id": "a3", "path": "core/a3.sh", "type": "script", "cluster": "core" },
+    {
+      "id": "d1", "path": "core/d1.sh", "type": "script", "cluster": "core",
+      "content_signature": ["tok-parse", "tok-validate", "tok-emit", "tok-log", "tok-exit"]
+    },
+    {
+      "id": "d2", "path": "core/d2.sh", "type": "script", "cluster": "core",
+      "content_signature": ["tok-parse", "tok-validate", "tok-emit", "tok-log", "tok-exit"]
+    },
+    { "id": "libX", "path": "core/libX.sh", "type": "script", "cluster": "core" },
+    { "id": "owner1", "path": "ownerA/owner1.md", "type": "skill", "cluster": "ownerA" },
+    {
+      "id": "r1", "path": "resources/r1.json", "type": "resource", "cluster": "shared",
+      "is_shared": true
+    }
+  ],
+  "edges": [
+    { "from": "a1", "to": "a2", "kind": "calls" },
+    { "from": "a2", "to": "a3", "kind": "calls" },
+    { "from": "a3", "to": "a1", "kind": "calls" },
+    { "from": "d1", "to": "libX", "kind": "calls" },
+    { "from": "d2", "to": "libX", "kind": "calls" },
+    { "from": "owner1", "to": "r1", "kind": "resource_include" }
+  ],
+  "metrics": {
+    "a1": { "fan_in": 1, "fan_out": 1, "dir_depth": 2, "orphan": false },
+    "a2": { "fan_in": 1, "fan_out": 1, "dir_depth": 2, "orphan": false },
+    "a3": { "fan_in": 1, "fan_out": 1, "dir_depth": 2, "orphan": false },
+    "d1": { "fan_in": 0, "fan_out": 1, "dir_depth": 2, "orphan": false },
+    "d2": { "fan_in": 0, "fan_out": 1, "dir_depth": 2, "orphan": false },
+    "libX": { "fan_in": 2, "fan_out": 0, "dir_depth": 2, "orphan": false },
+    "owner1": { "fan_in": 0, "fan_out": 1, "dir_depth": 1, "orphan": false },
+    "r1": { "fan_in": 1, "fan_out": 0, "dir_depth": 1, "orphan": false }
+  }
+}

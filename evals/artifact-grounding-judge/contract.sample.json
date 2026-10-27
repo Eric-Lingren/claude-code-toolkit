@@ -1,0 +1,13 @@
+{
+  "agent": "artifact-grounding-judge",
+  "note": "Hand-written sample for exercising grade.py. Not the approved contract.",
+  "checks": [
+    {"id": "json_parse", "type": "json_parse", "source": {"role": "agents/learning/artifact-grounding-judge.md Output contract"}},
+    {"id": "no_prose", "type": "no_prose", "source": {"role": "agents/learning/artifact-grounding-judge.md: No prose. No markdown fences."}},
+    {"id": "format", "type": "schema", "source": {"role": "agents/learning/artifact-grounding-judge.md Output contract"},
+     "schema": {"type": "object", "required": ["verdict", "confidence", "reason"], "additionalProperties": false,
+                "properties": {"verdict": {"enum": ["pass", "rejected"]}, "confidence": {"enum": ["confirmed", "candidate"]}, "reason": {"type": "string"}}}},
+    {"id": "logs_on_pass", "type": "tool_called", "tool": "Bash", "match": "log-learning.py",
+     "when": {"field": "verdict", "equals": "pass"}, "source": {"side_effect": "On pass, calls log-learning.py"}}
+  ]
+}

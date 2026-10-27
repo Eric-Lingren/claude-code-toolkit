@@ -1,0 +1,18 @@
+{
+  "_doc": "Router config mapping skills to voice profiles. 'profiles' maps profile name -> {file, description}, where 'file' is relative to resources/voice-profiles/. 'skills' maps skill name -> profile name; a value may also be an array of profile names for future multi-profile composability (not exercised today, but consumers must tolerate both string and array). Standalone config, independent of model-tiers.json and sync-model-tiers.py.",
+  "profiles": {
+    "dev-office": {
+      "file": "dev-office.md",
+      "description": "Default professional dev-office voice for PR review and revision output."
+    },
+    "slack-casual": {
+      "file": "slack-casual.md",
+      "description": "Informal Slack reply voice for answer-composer egress output. Direct, low-hedging, contraction-heavy. Profile content is a placeholder — replace with distilled voice samples before production use."
+    }
+  },
+  "skills": {
+    "pr-code-review": "dev-office",
+    "pr-revise": "dev-office",
+    "answer-composer": "slack-casual"
+  }
+}

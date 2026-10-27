@@ -1,0 +1,409 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "seed-schema",
+  "title": "Seed",
+  "description": "Structured JSON intermediate representation (IR) distilled from a grill or conversation session. Version 4: open_threads changes from string[] to object array with id/text/first_seen_iteration. Adds disposed_threads (lock list), iteration counter, and verification stamp.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "producer",
+    "source",
+    "title",
+    "slug",
+    "created",
+    "summary",
+    "decisions",
+    "open_threads",
+    "next_action",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "4",
+      "description": "Always '4'. Hard cutover from v3 — old files fail validation by design."
+    },
+    "producer": {
+      "$ref": "provenance-schema#/$defs/producer",
+      "description": "The skill that generated this seed. Typically 'to-seed'."
+    },
+    "source": {
+      "$ref": "provenance-schema#/$defs/source",
+      "description": "What this seed was derived from. Null for seeds generated directly from a conversation. {type:'seed', ref:<path>} for Mode-2 handoff-merge seeds that fold a prior session's resolutions onto a parent seed."
+    },
+    "title": {
+      "type": "string",
+      "description": "Short human-readable title for this topic."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case identifier derived from title, max ~40 chars."
+    },
+    "created": {
+      "type": "string",
+      "description": "ISO 8601 timestamp of seed creation (e.g. 2026-06-03T18:40:00Z)."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One paragraph: what was discussed, what was decided, current readiness state."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "draft"],
+      "description": "Derived from open_threads: 'ready' when open_threads is empty, 'draft' otherwise. Never hand-set. to-tasks hard-refuses a draft seed."
+    },
+    "iteration": {
+      "type": "integer",
+      "description": "Number of grill/verification iterations this seed has gone through. Documentation and telemetry only — does not gate any pipeline step."
+    },
+    "decisions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Resolved decisions. Each entry is a concrete resolved statement. Empty array if none."
+    },
+    "open_threads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "first_seen_iteration"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for this thread (e.g. 'ot-001'). Never reused, even after disposal."
+          },
+          "text": {
+            "type": "string",
+            "description": "The unresolved question or judgment call."
+          },
+          "first_seen_iteration": {
+            "type": "integer",
+            "description": "Iteration number when this thread was first recorded."
+          }
+        }
+      },
+      "description": "Genuinely unresolved JUDGMENT only — questions where the answer changes what gets built and no consensus was reached. Empty array when status is 'ready'."
+    },
+    "disposed_threads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "disposition", "iteration"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier matching the original open_threads entry."
+          },
+          "text": {
+            "type": "string",
+            "description": "The original thread text, preserved verbatim."
+          },
+          "disposition": {
+            "type": "string",
+            "enum": ["decided", "deferred", "rejected"],
+            "description": "How the thread was resolved. 'decided': a concrete resolution was reached. 'deferred': parked for a future session. 'rejected': explicitly ruled out of scope."
+          },
+          "iteration": {
+            "type": "integer",
+            "description": "Iteration number when this thread was disposed."
+          }
+        }
+      },
+      "description": "Lock list of threads that have been disposed. Grill resume mode treats these ids as off-limits — they cannot be re-raised under any name (relabel-resurrection blocked)."
+    },
+    "verification": {
+      "type": "object",
+      "required": ["iteration", "personas", "refutations_upheld", "clean", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "iteration": {
+          "type": "integer",
+          "description": "Iteration number at which verification ran."
+        },
+        "personas": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Names of adversary persona agents that ran (e.g. ['grounding', 'accuracy', 'completeness', 'coherence'])."
+        },
+        "refutations_upheld": {
+          "type": "integer",
+          "description": "Count of refutations the judge panel upheld (2-of-3 majority). Zero means a clean pass."
+        },
+        "clean": {
+          "type": "boolean",
+          "description": "True when refutations_upheld === 0. Convenience flag for quick gate checks."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["verified", "degraded"],
+          "description": "'verified': adversary panel completed and seed passed or corrections were applied. 'degraded': panel did not fully complete (agent error/timeout); to-tasks hard-refuses degraded seeds."
+        },
+        "refutations_screened": {
+          "type": "integer",
+          "description": "Count of refutations the round-1 batched screener marked rejected, so they never escalated to the 3-judge panel. Observability data for calibrating the escalation threshold."
+        }
+      },
+      "description": "Verification stamp written by to-seed after the adversary panel run. Absent on v3 and earlier seeds (backward-compatible: to-tasks skips the check when the field is missing)."
+    },
+    "deferred": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "rationale", "context", "source_seed"],
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Short description of the deferred item."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why this is deferred rather than resolved or rejected."
+          },
+          "context": {
+            "type": "string",
+            "description": "Background needed to pick this up in a future session."
+          },
+          "source_seed": {
+            "type": ["string", "null"],
+            "description": "Path to the seed that introduced this deferred item, or null if originated here."
+          }
+        }
+      },
+      "description": "Work items acknowledged but explicitly set aside for a future effort. Each item carries enough context to be revisited independently."
+    },
+    "next_action": {
+      "type": "string",
+      "description": "The single most important next step. Not a list."
+    },
+    "problem_statement": {
+      "type": "string",
+      "description": "The problem in plain text."
+    },
+    "solution": {
+      "type": "string",
+      "description": "The solution in plain text."
+    },
+    "evidence": {
+      "type": "string",
+      "description": "One or two sentences: data, complaints, or research that motivated this."
+    },
+    "success_metrics": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Specific measurable success criteria."
+    },
+    "user_stories": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["actor", "feature", "benefit"],
+        "properties": {
+          "actor": {"type": "string"},
+          "feature": {"type": "string"},
+          "benefit": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "description": "Minimum 5 entries if included. Format: As a <actor>, I want <feature>, so that <benefit>."
+    },
+    "implementation_decisions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Modules, interfaces, schema, APIs decided. Implementation details that are decided but conditional on runtime conditions belong here or in task acceptance criteria, not in open_threads."
+    },
+    "testing_decisions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Testing approach decisions."
+    },
+    "out_of_scope": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Short description of the explicitly excluded item."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why this is excluded. Consumed by to-tasks as a negative guard so no task slice is generated for this item."
+          }
+        }
+      },
+      "description": "Items explicitly rejected from scope. Structured as {text, rationale} so to-tasks can read rationale as negative context and skip any slice that would implement a rejected item."
+    },
+    "risks_and_tradeoffs": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Known risks and tradeoff statements."
+    },
+    "further_notes": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Miscellaneous notes that don't fit other fields."
+    },
+    "condensed_from": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "List of original seed filenames (basenames only) that were merged to produce this condensed seed. Used by tools that resolve backlinks when the original file is no longer present. Optional — omit for non-condensed seeds."
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["pr_url", "head_branch", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "pr_url": {
+          "type": "string",
+          "description": "URL of the pull request this seed was distilled from."
+        },
+        "head_branch": {
+          "type": "string",
+          "description": "Head branch of the PR (the branch carrying the changes under review)."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["thread_id", "thread_id_type", "final_class"],
+            "additionalProperties": false,
+            "properties": {
+              "thread_id": {
+                "type": "string",
+                "description": "Identifier of the review thread or comment. GraphQL global node id for inline threads, numeric databaseId string for top-level PR comments."
+              },
+              "thread_id_type": {
+                "type": "string",
+                "enum": ["graphql_node_id", "database_id"],
+                "description": "Which id kind thread_id holds, so downstream consumers (e.g. relay) key resolution correctly."
+              },
+              "final_class": {
+                "type": "string",
+                "enum": ["bug", "change", "question", "diligence", "discuss", "nit"],
+                "description": "Final class after diligence and the HITL gate."
+              },
+              "disposition": {
+                "type": ["string", "null"],
+                "enum": ["unverified", "confirmed_escape", "false_flag", "not_an_escape", null],
+                "description": "Final disposition for bug-class items, or null for non-bug items."
+              },
+              "resolve_only": {
+                "type": "boolean",
+                "description": "PR-feedback only. True for the PR author's own self-note threads. No reply_body is drafted; to-tasks emits a resolve-only reply task so relay resolves the thread once the fix lands."
+              },
+              "reply_body": {
+                "type": "string",
+                "description": "PR-feedback only. Draft reply for this thread, written by pr-revise, grounded in the diligence finding. The reviewer's handle is omitted (the thread already targets them), and no commit SHA is hand-written (relay stitches the fixing commit in at post time). to-tasks copies this verbatim onto the generated reply task's reply_body."
+              },
+              "reply_url": {
+                "type": "string",
+                "description": "PR-feedback only. The originating review-comment URL this reply answers (from pr-revise harvest). to-tasks copies it onto the reply task's reply_url."
+              },
+              "original_comment_body": {
+                "type": "string",
+                "description": "PR-feedback only. Full body text of the original review comment or thread, captured at harvest time."
+              },
+              "original_comment_author": {
+                "type": "string",
+                "description": "PR-feedback only. GitHub login of the author of the original review comment."
+              },
+              "thread_database_id": {
+                "type": "string",
+                "description": "PR-feedback only. REST numeric comment id (databaseId) for this thread, carried alongside the GraphQL node id in thread_id. Enables REST-based reply posting."
+              },
+              "fix": {
+                "type": ["string", "null"],
+                "description": "PR-feedback only. The code change to make on THIS PR to satisfy this item, or null when no code change is warranted (question, declined nit, false_flag, or a change deferred to a later PR). When non-null, to-tasks emits a `code` task from this scope plus a `reply` task blocked_by it, so the reply can cite the fixing commit. When null, to-tasks emits a reply task only."
+              }
+            }
+          },
+          "description": "One entry per harvested feedback item, in harvest order. Carries both the code scope (fix) and the PR response (reply_body) so to-tasks can generate paired code + reply tasks without re-reading the session."
+        }
+      },
+      "description": "PR-feedback provenance written by the pr-revise pipeline (Step 8). Present only on seeds distilled from PR review threads. Downstream skills (e.g. relay) read items[] to resolve threads. Omit for seeds not produced by revise-pr."
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "4",
+      "producer": "to-seed",
+      "source": null,
+      "title": "Replace session tokens with short-lived JWTs",
+      "slug": "replace-session-tokens-jwt",
+      "created": "2026-06-02T20:00:00Z",
+      "status": "ready",
+      "iteration": 2,
+      "summary": "Current auth stores opaque session tokens in Redis. Legal requires short-lived, auditable tokens. All judgment calls resolved: migrate to RS256 JWTs with 15-min expiry and refresh-token rotation. Redis session store removed after migration.",
+      "decisions": [
+        "Use signed JWTs (RS256) with 15-minute access token expiry",
+        "Refresh tokens stored in HttpOnly cookies, rotated on every use",
+        "Redis session store is deprecated and removed after migration, not alongside it",
+        "No silent refresh in the client — expired token triggers a full re-auth UX"
+      ],
+      "open_threads": [],
+      "disposed_threads": [
+        {
+          "id": "ot-001",
+          "text": "Should refresh token expiry be 7 days or 30 days?",
+          "disposition": "decided",
+          "iteration": 1
+        },
+        {
+          "id": "ot-002",
+          "text": "Multi-device session management approach",
+          "disposition": "deferred",
+          "iteration": 2
+        }
+      ],
+      "verification": {
+        "iteration": 2,
+        "personas": ["grounding", "accuracy", "completeness", "coherence"],
+        "refutations_upheld": 0,
+        "refutations_screened": 0,
+        "clean": true,
+        "status": "verified"
+      },
+      "deferred": [
+        {
+          "text": "Multi-device session management",
+          "rationale": "Product has not decided the UX for concurrent sessions; deferring until that decision is made.",
+          "context": "Current implementation issues one session per user. Multi-device requires either session list UI or silent coexistence strategy.",
+          "source_seed": null
+        }
+      ],
+      "next_action": "Run /to-tasks to generate the migration task breakdown",
+      "problem_statement": "Opaque session tokens in Redis do not carry claims, cannot be audited externally, and have no expiry short of explicit revocation. Legal has flagged this for compliance.",
+      "solution": "Replace session tokens with RS256-signed JWTs. Access tokens expire in 15 minutes. Refresh tokens rotate on use and are stored in HttpOnly cookies. Redis session store is removed post-migration.",
+      "evidence": "Legal audit (2026-05-15) flagged session token storage as non-compliant. Three internal incidents involved stale tokens remaining valid after account deletion.",
+      "implementation_decisions": [
+        "JWT signing uses RS256 with a 2048-bit key pair; private key stored in secrets manager",
+        "Refresh token table added to Postgres: columns id, user_id, token_hash, expires_at, revoked_at",
+        "Auth middleware validates JWT signature and expiry before any handler runs"
+      ],
+      "testing_decisions": [
+        "Unit tests cover token signing, expiry validation, and refresh rotation logic",
+        "Integration tests hit the real Postgres refresh token table, not a mock"
+      ],
+      "out_of_scope": [
+        {
+          "text": "Token introspection endpoint for third-party consumers",
+          "rationale": "No external consumers exist today; adding this would be speculative scope."
+        }
+      ],
+      "risks_and_tradeoffs": [
+        "15-minute expiry shortens the window for revocation but increases refresh round-trips",
+        "Dual-read migration period leaves old session tokens valid; any Redis breach during this window is still a risk"
+      ],
+      "further_notes": [
+        "RS256 key rotation cadence not yet decided — revisit before go-live"
+      ]
+    }
+  ]
+}

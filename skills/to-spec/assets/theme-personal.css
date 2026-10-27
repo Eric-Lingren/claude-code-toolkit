@@ -1,0 +1,23 @@
+/* Personal theme — Spawned Sapien earth tones (dark, warm, ochre-anchored) */
+:root {
+  --bg: #1A1A1A;
+  --bg-surface: #2A1A14;
+  --bg-hover: #4E342E;
+  --text: #F0E6D2;
+  --text-muted: #B2BEB5;
+  --text-heading: #F5F5DC;
+  --border: #5D4037;
+  --accent: #CC7722;
+  --accent-dim: #CD7F32;
+  --risk-high: #E74C3C;
+  --risk-med: #F39C12;
+  --risk-low: #2E6F40;
+  --pill-bg: #4E342E;
+  --tab-active: #CC7722;
+  --tab-inactive: #5D4037;
+  --check-done: #2E6F40;
+  --progress-bg: #4E342E;
+  --progress-fill: #CC7722;
+  --font-body: 'Nunito', system-ui, sans-serif;
+  --font-heading: 'Cormorant Garamond', 'Georgia', serif;
+}

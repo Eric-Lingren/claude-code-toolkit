@@ -1,0 +1,5 @@
+{"repo":"Org/Repo","bucket":"b","sort":[],"candidates":[
+{"id":"KEY-101","title":"Same parent as teammate","parent":"KEY-90","project":"Exports","created_at":"2026-09-01","branch":"b1"},
+{"id":"KEY-102","title":"Project overlap only","parent":null,"project":"Sync","created_at":"2026-09-02","branch":"b2"},
+{"id":"KEY-103","title":"No overlap","parent":null,"project":null,"created_at":"2026-09-03","branch":"b3"}
+]}

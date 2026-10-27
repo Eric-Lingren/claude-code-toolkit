@@ -1,0 +1,84 @@
+{
+ "issues": {
+  "nodes": [
+   {
+    "identifier": "KEY-1",
+    "title": "mine a",
+    "url": "https://linear.app/x/KEY-1",
+    "estimate": 2,
+    "createdAt": "2026-09-01T00:00:00Z",
+    "branchName": "eric/key-1",
+    "state": {
+     "name": "Backlog",
+     "type": "backlog"
+    },
+    "project": {
+     "name": "Exports"
+    },
+    "parent": null,
+    "assignee": null,
+    "labels": {
+     "nodes": []
+    },
+    "attachments": {
+     "nodes": []
+    },
+    "inverseRelations": {
+     "nodes": []
+    }
+   },
+   {
+    "identifier": "KEY-2",
+    "title": "mine b",
+    "url": "https://linear.app/x/KEY-2",
+    "estimate": 1,
+    "createdAt": "2026-09-02T00:00:00Z",
+    "branchName": "eric/key-2",
+    "state": {
+     "name": "Backlog",
+     "type": "backlog"
+    },
+    "project": {
+     "name": "Billing"
+    },
+    "parent": null,
+    "assignee": null,
+    "labels": {
+     "nodes": []
+    },
+    "attachments": {
+     "nodes": []
+    },
+    "inverseRelations": {
+     "nodes": []
+    }
+   },
+   {
+    "identifier": "KEY-3",
+    "title": "mine c",
+    "url": "https://linear.app/x/KEY-3",
+    "estimate": 3,
+    "createdAt": "2026-09-03T00:00:00Z",
+    "branchName": "eric/key-3",
+    "state": {
+     "name": "Backlog",
+     "type": "backlog"
+    },
+    "project": {
+     "name": "Exports"
+    },
+    "parent": null,
+    "assignee": null,
+    "labels": {
+     "nodes": []
+    },
+    "attachments": {
+     "nodes": []
+    },
+    "inverseRelations": {
+     "nodes": []
+    }
+   }
+  ]
+ }
+}
