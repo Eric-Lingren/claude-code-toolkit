@@ -2,7 +2,7 @@
 
 My shared Claude Code infrastructure toolkit. 
 
-I maintain it in a private repo. A script publishes the shareable parts to [claude-code-toolkit](https://github.com/Eric-Lingren/claude-code-toolkit) after scanning them for private details. The public copy is rebuilt on every sync.
+I maintain it in a private repo. A script publishes the shareable parts to this claude-code-toolkit repo after scanning them for private details. The public copy is rebuilt on every sync.
 
 Skills and agents are markdown. Contracts between stages are JSON Schema. Anything mechanical lives in a script, and anything that must always or never happen lives in a hook.
 
