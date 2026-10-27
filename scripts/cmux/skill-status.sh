@@ -5,8 +5,9 @@
 #        skill-status.sh done  <slug>
 #        skill-status.sh end
 #
-#   start <slug>  set status row "skill" to an hourglass + UPPERCASE slug
-#   done  <slug>  set status row "skill" to a check mark + UPPERCASE slug
+#   start <slug>  set status row "skill" to an hourglass + UPPERCASE slug, amber
+#   done  <slug>  set status row "skill" to a check mark + UPPERCASE slug, green
+#                 (darker shades in light mode; theme read once per call)
 #   end           clear the "skill" status row
 #
 # start/done only act for shared skills: claude-code-shared/skills/<slug>/SKILL.md
@@ -24,6 +25,12 @@ set -u
 KEY="skill"
 CMUX_FALLBACK="/Applications/cmux.app/Contents/Resources/bin/cmux"
 TIMEOUT_SECS=2
+# Pill colors per macOS appearance (cmux follows the system theme). Bright
+# shades wash out on the light sidebar, so light mode gets darker ones.
+COLOR_RUNNING_DARK="#ff9500"
+COLOR_DONE_DARK="#34c759"
+COLOR_RUNNING_LIGHT="#b45309"
+COLOR_DONE_LIGHT="#15803d"
 
 usage() {
   cat >&2 <<USAGE
@@ -92,9 +99,18 @@ grep -Eq '<!-- skill-done:[[:space:]]*[^[:space:]>]+[[:space:]]*-->' "$skill_md"
 
 upper="$(printf '%s' "$slug" | tr '[:lower:]' '[:upper:]')"
 
-if [ "$mode" = "start" ]; then
-  run_cmux set-status "$KEY" "⏳ $upper" || true
+# AppleInterfaceStyle is "Dark" in dark mode and unset in light mode.
+if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
+  COLOR_RUNNING="$COLOR_RUNNING_DARK"
+  COLOR_DONE="$COLOR_DONE_DARK"
 else
-  run_cmux set-status "$KEY" "✓ $upper" || true
+  COLOR_RUNNING="$COLOR_RUNNING_LIGHT"
+  COLOR_DONE="$COLOR_DONE_LIGHT"
+fi
+
+if [ "$mode" = "start" ]; then
+  run_cmux set-status "$KEY" "⏳ $upper" --color "$COLOR_RUNNING" || true
+else
+  run_cmux set-status "$KEY" "✅ $upper" --color "$COLOR_DONE" || true
 fi
 exit 0
