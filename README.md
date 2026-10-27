@@ -1,10 +1,10 @@
 # Claude Code toolkit
 
-My shared Claude Code toolkit. Every project I work in loads it, through both my personal and work Claude Code profiles.
+My shared Claude Code infrastructure toolkit. 
 
-I maintain it in a private repo. A script publishes the shareable parts to [claude-code-toolkit](https://github.com/Eric-Lingren/claude-code-toolkit) after scanning them for private details. The public copy is rebuilt on every sync, so I don't take issues or pull requests there.
+I maintain it in a private repo. A script publishes the shareable parts to [claude-code-toolkit](https://github.com/Eric-Lingren/claude-code-toolkit) after scanning them for private details. The public copy is rebuilt on every sync.
 
-It is infrastructure, not an app. Skills and agents are markdown. Contracts between stages are JSON Schema. Anything mechanical lives in a script, and anything that must always or never happen lives in a hook.
+Skills and agents are markdown. Contracts between stages are JSON Schema. Anything mechanical lives in a script, and anything that must always or never happen lives in a hook.
 
 ## The pipeline
 
