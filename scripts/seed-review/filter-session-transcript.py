@@ -12,6 +12,9 @@ Environment:
   CLAUDE_CODE_SESSION_ID  Session ID for auto-resolve (combined with CLAUDE_CONFIG_DIR)
   CLAUDE_CONFIG_DIR       Claude config dir (default: ~/.claude)
 
+Auto-resolve tolerates cwd drift: it tries the cwd's project dir, then the git
+toplevel's, then any projects/*/<session-id>.jsonl (newest wins).
+
 Exit codes:
   0  Success — cleaned file written to output-path
   1  Error — session JSONL not found, unresolvable path, or parse failure
@@ -21,6 +24,7 @@ import sys
 import json
 import os
 import pathlib
+import subprocess
 
 TOOL_RESULT_CAP = 2048  # bytes
 
@@ -47,6 +51,20 @@ def encode_cwd(path: str) -> str:
     return "".join(result)
 
 
+def git_toplevel():
+    """Return the git toplevel for cwd, or None if not in a repo or git is unavailable."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() or None
+
+
 def resolve_session_path() -> pathlib.Path:
     """Resolve the session JSONL path from environment variables."""
     transcript_path = os.environ.get("transcript_path")
@@ -70,20 +88,37 @@ def resolve_session_path() -> pathlib.Path:
         sys.exit(1)
 
     config_dir = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
-    cwd = os.getcwd()
-    encoded = encode_cwd(cwd)
+    projects = pathlib.Path(config_dir) / "projects"
+    filename = f"{session_id}.jsonl"
+    tried = []
 
-    p = pathlib.Path(config_dir) / "projects" / encoded / f"{session_id}.jsonl"
-    if not p.exists():
-        print(
-            f"ERROR: Session JSONL not found: {p}\n"
-            f"  CLAUDE_CODE_SESSION_ID={session_id}\n"
-            f"  CLAUDE_CONFIG_DIR={config_dir}\n"
-            f"  Encoded cwd: {encoded}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return p
+    # 1. cwd, 2. git toplevel (cwd may have drifted into a subdirectory).
+    dirs = [os.getcwd()]
+    top = git_toplevel()
+    if top and top not in dirs:
+        dirs.append(top)
+    for d in dirs:
+        p = projects / encode_cwd(d) / filename
+        tried.append(str(p))
+        if p.exists():
+            return p
+
+    # 3. Any project dir. Session ids are unique; newest wins on multiple hits.
+    tried.append(str(projects / "*" / filename))
+    hits = list(projects.glob(f"*/{filename}"))
+    if hits:
+        return max(hits, key=lambda h: h.stat().st_mtime)
+
+    print(
+        f"ERROR: Session JSONL not found.\n"
+        f"  CLAUDE_CODE_SESSION_ID={session_id}\n"
+        f"  CLAUDE_CONFIG_DIR={config_dir}\n"
+        "  Tried:\n"
+        + "".join(f"    {t}\n" for t in tried)
+        + "  Set transcript_path=<path> to override.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def cap_text(text: str) -> str:

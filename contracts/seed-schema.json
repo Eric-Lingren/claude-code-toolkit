@@ -144,6 +144,10 @@
         "refutations_screened": {
           "type": "integer",
           "description": "Count of refutations the round-1 batched screener marked rejected, so they never escalated to the 3-judge panel. Observability data for calibrating the escalation threshold."
+        },
+        "refutations_reescalated": {
+          "type": "integer",
+          "description": "Count of screener-rejected refutations sent to the 3-judge panel anyway under the to-seed tool_result rule (screener cited missing or ambiguous evidence that a verbatim tool_result resolves). Not counted in refutations_screened."
         }
       },
       "description": "Verification stamp written by to-seed after the adversary panel run. Absent on v3 and earlier seeds (backward-compatible: to-tasks skips the check when the field is missing)."
@@ -367,6 +371,7 @@
         "personas": ["grounding", "accuracy", "completeness", "coherence"],
         "refutations_upheld": 0,
         "refutations_screened": 0,
+        "refutations_reescalated": 0,
         "clean": true,
         "status": "verified"
       },

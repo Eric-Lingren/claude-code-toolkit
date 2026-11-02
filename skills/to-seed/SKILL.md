@@ -1,7 +1,7 @@
 ---
 name: to-seed
 description: Distill the current conversation or grill session into a standardized JSON IR (seed) and save it to docs/seeds/. Use when user wants to capture decisions and context from a conversation before moving to /to-spec, /to-tasks, or /prototype.
-argument-hint: "[optional: path to a handoff doc that carries a base seed to merge into]"
+argument-hint: "[optional: path to a handoff doc that carries a base seed to merge into, or an existing seed to update in place]"
 model: sonnet
 effort: high
 invokedBy: human
@@ -13,16 +13,19 @@ Distill the current conversation into a structured JSON seed file. Works standal
 
 ## Input modes
 
-to-seed has two ingest modes. Detect which one applies before doing anything else.
+to-seed has three ingest modes. Detect which one applies before doing anything else.
 
-- **Mode 1 — conversation (default):** No handoff path was passed in ARGUMENTS. Synthesize a fresh seed from the live conversation (standalone or a grill session). This is the common case.
+- **Mode 1 — conversation (default):** No handoff path was passed in ARGUMENTS, the user did not name an existing seed to update, and the conversation did not load or resume an existing seed file. Synthesize a fresh seed from the live conversation (standalone or a grill session). This is the common case.
 - **Mode 2 — handoff merge:** A handoff doc path was passed in ARGUMENTS. This is the return trip after open threads were resolved in a separate grill session. Read the handoff, parse the embedded base seed path out of it, load that base seed as the merge foundation, then fold the current conversation's resolutions on top. See step 2b.
+- **Mode 3 — in-place update:** The user names an existing seed file path (in ARGUMENTS or the conversation) and asks to update or merge into it, or the conversation loaded or resumed an existing seed file with no handoff (e.g. a grill-me resume that read `docs/seeds/<file>.json`). Use that file as the base for the step 2b merge and write the result back to the same path. In the resumed case the user never named the path, so unless they asked for an in-place update, confirm the seed path in one line before overwriting. If several seeds were loaded, ask which one is the base. A seed read only as reference does not trigger Mode 3; use Mode 1. If the path does not exist, ask the user. Do not create it. Grounding and verification (step 3) run unchanged.
 
-Mode 2 is additive: it reads the handoff AND the current conversation, then merges both onto the base seed. The handoff is the only artifact the user carries — the base seed path lives inside it, so the user never passes a seed path directly.
+Mode 2 is additive: it reads the handoff AND the current conversation, then merges both onto the base seed. The handoff is the only artifact the user carries — the base seed path lives inside it, so in Mode 2 the user never passes a seed path directly.
 
 ## Process
 
-### 1. Branch sanity-check (the only interactive prompt)
+### 1. Branch sanity-check (the only routine prompt)
+
+Skip the question when the target branch is already settled. If the user named a branch, `git switch` to it (same failure rule as Option 2). In Mode 3 with no branch named, stay on the current branch, where the seed file lives. If the seed is not in the current working tree, ask which branch holds it. Still run gxcheck.
 
 **gxcheck pre-flight:** Before asking the user, run `~/.dotfiles/.scripts/gxcheck` and surface its output as a brief status block (e.g. `Branch check: OK: branch looks clean`). This is advisory only — the skill continues regardless of the output.
 
@@ -60,16 +63,20 @@ its shape is fixed by `seed-schema.json` (`pr_url`, `head_branch`, `items[]` wit
 Required fields are always present. Optional fields are omitted when the conversation contains no relevant content.
 
 **Synthesis rules:**
-- Never fabricate content. Only include what the conversation explicitly contains or implies.
+- Never fabricate content. Only include what the conversation explicitly contains or implies. Grounded sources are what the user said or accepted in the cleaned transcript, plus ARGUMENTS wording. These are not grounded on their own: injected project instructions (e.g. CLAUDE.md), illustrative examples inside questions, and assistant or subagent claims the user never confirmed.
 - Do not invent `user_stories` or `success_metrics` to fill optional limbs when the conversation is not feature-scoped.
 - `decisions` must be concrete resolved statements, not restatements of the conversation. Every decision someone reached belongs here.
 - `open_threads` holds **genuine unresolved JUDGMENT only** — questions where the answer changes what gets built and no consensus was reached. It must be empty when everything is decided. Each entry is an object `{id, text, first_seen_iteration}`. Assign a stable id (e.g. `ot-001`, `ot-002`) that never changes, even after disposal.
-- `disposed_threads` is the lock list of threads that were disposed during this or any prior session. Each entry is `{id, text, disposition, iteration}` where disposition is `decided`, `deferred`, or `rejected`. This list is immutable once written — entries are never removed.
+- `disposed_threads` is the lock list of threads that were disposed during this or any prior session. Each entry is `{id, text, disposition, iteration}` where disposition is `decided`, `deferred`, or `rejected`. This list is immutable once written — entries are never removed. A thread the user accepted and later replaced with a newer choice is `decided` (superseded), not `rejected`. `rejected` means the user turned it down.
+- **Carry caller-confirmed dispositions into `disposed_threads`.** When a calling skill (e.g. `pr-revise`) passes a `provenance` block, mint a `disposed_threads` entry for each item the user confirmed at the caller's HITL gate as non-actionable. Do not leave this for the personas to catch. A confirmed `false_flag` (claim refuted, no change) maps to `rejected`. Set `id` to the item's `thread_id`, `text` to the item's excerpt or claim from ARGUMENTS, and `iteration` to the seed's current iteration. Skip `unverified` and unconfirmed items. Skip items that still carry a `fix`, such as a `false_flag` the user accepted a change on anyway. For other dispositions with no clear mapping (e.g. `not_an_escape`), do not mint an entry. Do not re-list a user-confirmed item as an open risk or a "confirm with the user" step. The `provenance` block itself is still copied verbatim.
 - `iteration` is an integer tracking how many grill/verification cycles this seed has gone through. Start at 1 for fresh seeds.
 - **Decided-but-conditional implementation details are NOT open threads.** If something was decided (e.g. "use Registry API if jsonschema >=4.18, else RefResolver"), it is a decided implementation detail. Put it in `implementation_decisions` or in a task's acceptance criteria. Do NOT file it as an open thread just because it has a conditional.
 - **Version schemas in place unless old data needs the old file.** If a decision versions a schema or contract that already has an internal version field (e.g. a `schema_version` const), record it as an in-place bump. Only record a new version-suffixed file (e.g. `foo-v2.json`) when live old-version data must keep validating against the old file.
-- **Record the full call contract for reused hooks and utilities.** If a decision says a new call site uses a hook, utility, or function "the same way <file X> does," read the reference call site and the callee's contract, then state the exact arguments file X passes. If an argument is intentionally omitted, say so and say why.
+- **Record the full call contract for reused hooks and utilities.** If a decision says a new call site uses a hook, utility, or function "the same way <file X> does," read the reference call site and the callee's contract, then state the exact arguments file X passes. If an argument is intentionally omitted, say so and say why. Likewise, when a decision records a component's props or signature, also record the agreed layout and behavior (e.g. arrangement, labels, behavior on small screens).
 - **List every gating flag when state is re-keyed to an entity.** If a decision re-keys or re-scopes state to an entity (query keys, cache keys, or store slices keyed by company, user, or tenant), list every flag or derived value that gates that state and say whether each resets on entity switch. For example, a hydration fix that re-keys the query must also say whether `isHydrated` resets. If the conversation did not settle how a flag resets, note it as an unverified gap in `risks_and_tradeoffs`.
+- **State tracked display state as an invariant.** If a decision says derived or display state tracks a value, state it as an invariant that holds after every path that changes the value, not only the path discussed. Name the known paths if the conversation surfaced them.
+- **Record both states of a feature flag.** If a decision or risk concerns behavior behind a feature flag, check the gating in code. Record the expected behavior with the flag on and with it off. If the conversation did not settle the off-state behavior, route it like any other unverified gap (see the grounding pass).
+- **Record side effects of shared code on out-of-scope surfaces.** If a decision changes a shared function, component, or utility, its other callers may sit outside the change scope. When the conversation or code inspection surfaced such callers, record the effect on each one. If the user accepted the effect, put it in `risks_and_tradeoffs`. If whether to handle it is undecided, put it in `open_threads`. This does not require an exhaustive caller audit.
 - `next_action` is singular — the most important next step, not a list.
 
 **Thread classification (required before writing):**
@@ -100,13 +107,13 @@ After routing all threads, extract the ids from `disposed_threads`. This is the 
 
 Set `producer: "to-seed"`. Set `source: {"type": "session", "ref": null}` for fresh seeds generated from a conversation.
 
-### 2b. Merge a base seed (Mode 2 only)
+### 2b. Merge a base seed (Modes 2 and 3)
 
-Run this step only when a handoff path was passed in ARGUMENTS. Skip it entirely in Mode 1.
+Run this step in Mode 2 and Mode 3. Skip it entirely in Mode 1. In Mode 3 there is no handoff: the named seed is the base, so start at reading the base seed.
 
 1. Route the handoff path through resolve-ref.sh before reading (see `resources/resolve-ref-pattern.md`): Run `bash ~/.dotfiles/claude-code-shared/scripts/scaffolding/resolve-ref.sh $(basename <handoff-path>)`. On archive hit (output starts with `ARCHIVE:`), use the extracted content. On not-found (exit non-zero), surface the diagnostic and ask "Continue anyway?" — bypass rebuilds context from conversation.
 2. Read the handoff doc (active path or archive content from step 1).
-3. Find the machine-readable seed-context block inside it (a fenced ```json block under a `## Seed Context` heading). Parse out `base_seed` (the path to the original seed file).
+3. Find the machine-readable seed-context block inside it (a fenced ```json block under a `## Seed Context` heading). Parse out `base_seed` (the path to the original seed file). If there is no seed-context block, look for a single `docs/seeds/*.json` path in the handoff text and use it. If there is none or more than one, ask the user for the base seed path. Do not fall back to Mode 1.
 3. Read the base seed JSON. This is the merge foundation — it carries every decision and field from the original session, so nothing from that conversation is lost.
 4. Synthesize the current grill conversation's resolutions, then merge onto the base seed:
    - Apply thread classification (step 2 above) to ALL threads — from both the handoff and the current conversation.
@@ -114,10 +121,30 @@ Run this step only when a handoff path was passed in ARGUMENTS. Skip it entirely
    - Route deferred items to `deferred[]` and rejected items to `out_of_scope[]`.
    - Leave any still-unresolved threads in `open_threads`.
    - Append any genuinely new decisions surfaced during the grill.
+   - When a new decision revises or replaces a base-seed decision, compare the two. Carry forward each constraint of the old decision that the user did not explicitly drop. If it is unclear whether a constraint still holds, file an open thread.
    - Update `summary` and `next_action` to reflect the merged state.
    - Derive `status` as defined in step 2.
-5. Set `producer: "to-seed"`. Set `source: {"type": "seed", "ref": "<base-seed-path>"}` where `<base-seed-path>` is the path of the original seed from the handoff. **Do NOT write a `base_seed` field** — lineage is expressed entirely through `source`.
-6. The merged object is what gets written in step 3. It is a new seed file, not an in-place overwrite of the base.
+5. Set `producer: "to-seed"`. Set `source: {"type": "seed", "ref": "<base-seed-path>"}` where `<base-seed-path>` is the path of the original seed from the handoff. **Do NOT write a `base_seed` field** — lineage is expressed entirely through `source`. In Mode 3, keep the file's existing `source`, `slug`, `created`, and thread ids instead. Increment `iteration` by 1 from the file's current value.
+6. The merged object is what gets written in step 3. In Mode 2 it is a new seed file, not an in-place overwrite of the base. In Mode 3 it overwrites the named seed (step 4).
+
+**Grounding pass (required before 3a, all modes):**
+
+Before writing the seed temp file, check every claim in the draft. Personas read the draft as evidence, so an ungrounded claim spreads through review.
+- Each claim, number, and enumerated list traces to a turn where the user said or accepted it, or to ARGUMENTS. Drop list items that only appeared as examples in a question.
+- Rationale the user never confirmed, codebase claims, and figures carried from chat need a source check. This covers caller ARGUMENTS claims and subagent hand-backs too. If you cannot check one, keep it marked unverified. Do not state it as a settled decision.
+- Carry each hand-back's open checks, caveats, and "not verified" notes forward with their status intact. This includes negative-scope findings, such as a claim that something is absent, out of scope, or has no other callers.
+- Reflect each verified investigator or subagent fact in the open thread or decision it bears on. For each decision, check that every qualifier or limitation the source findings state for it appears in the decision text.
+- Route an unverified gap or a spec conflict between sources that changes what gets built to `open_threads` (this makes `status` `draft`). Put other unverified gaps in `risks_and_tradeoffs`.
+- Carry accepted options over whole: every clause of the chosen option's description, including fallback behavior, not a subset. Keep the user's own product definitions verbatim. Keep per-entry source values (titles, names, numbers) verbatim. Do not generalize one entry's value to the others.
+- Carry each stated user requirement into the decision it belongs to, including qualitative ones such as a tone or feel.
+- When a spec or ticket is a source, give every requirement it states a disposition: a decision, an open thread, a `deferred` entry, or an `out_of_scope` entry. Do not drop one because the conversation never discussed it.
+- Name deferred items concretely. If the source names the files or items, list them, not just a count.
+- Check claims in `solution` and other summary fields against any locked list in the conversation, such as a scope list or test list. They must not go beyond it.
+- An announced grill branch that was never walked, or a user thought left cut off or unanswered, becomes an `open_threads` entry, unless the user set it aside.
+- Reconcile `decisions` with `out_of_scope`. Drop stale grill phrasing that a later exclusion contradicts. Do not add an `out_of_scope` carve-out or rationale the user never stated.
+- Leave optional sections such as `testing_decisions` empty rather than adding defaults. An ad hoc check run during the session goes in `testing_decisions` only if the user adopted it. Omit implementation details nobody discussed. File one in `open_threads` only if it changes what gets built.
+- When `testing_decisions` or a decision prescribes assertions, phrase them to follow the repo's test conventions (nearest CLAUDE.md, neighboring tests). Do not narrow an assertion to one field when the convention checks the whole item. This shapes recorded assertions only. It does not add tests.
+- Use generic wording (e.g. "run ruff check and format") for commands, flags, paths, and process steps the conversation never named.
 
 ### 3. Verification stage
 
@@ -145,13 +172,17 @@ Before spawning any persona, produce two temp files:
 
 **Seed temp file:**
 
-Write the draft seed JSON to:
+Write the draft seed JSON with the Write tool, not a bash heredoc, to:
 ```
 /tmp/seed-${CLAUDE_CODE_SESSION_ID}.json
 ```
-Store the output path as `SEED_PATH`. Pass this path to all personas and judges. Do not inline the seed JSON in any agent prompt — passing a file path prevents generation drift when spawning multiple agents simultaneously.
+Store the output path as `SEED_PATH`. Validate it before any persona spawns:
+```bash
+bash ~/.dotfiles/claude-code-shared/scripts/seed-review/validate-seed.sh "${SEED_PATH}"
+```
+On failure, fix the draft, rewrite `SEED_PATH`, and re-run. Do not pass an invalid seed to the personas. Pass this path to all personas and judges. Do not inline the seed JSON in any agent prompt — passing a file path prevents generation drift when spawning multiple agents simultaneously.
 
-**Timeout policy (applies to every persona/judge spawn in 3b and 3c):** this fan-out has no natural completion signal if a spawn stalls, and it has hung indefinitely in practice. Spawn every persona and judge agent with `run_in_background: true`, then collect each with `TaskOutput` using `timeout: 600000` (10 min) and `block: true`. If `TaskOutput` does not return a completed result within the timeout, call `TaskStop` on that task_id and treat it exactly like a failed spawn: it gets the same one retry as a parse mismatch (same 10-min budget), and if the retry also times out, record the failure as `<agent name>: timed out after 10m` and fall through to that stage's existing failure handling. Never wait past this budget — a stalled spawn must surface as a recorded failure, not a silent hang.
+**Timeout policy (applies to every persona/judge spawn in 3b and 3c):** this fan-out has no natural completion signal if a spawn stalls, and it has hung indefinitely in practice. Spawn every persona and judge agent with `run_in_background: true`, then collect each with `TaskOutput` using `timeout: 600000` (10 min) and `block: true`. If `TaskOutput` is unavailable in the session, rely on the background-agent completion notifications instead, with the same 10-min budget and retry rule. If `TaskOutput` does not return a completed result within the timeout, call `TaskStop` on that task_id and treat it exactly like a failed spawn: it gets the same one retry as a parse mismatch (same 10-min budget), and if the retry also times out, record the failure as `<agent name>: timed out after 10m` and fall through to that stage's existing failure handling. Never wait past this budget — a stalled spawn must surface as a recorded failure, not a silent hang.
 
 #### 3b. Spawn all 4 adversary persona agents in parallel
 
@@ -160,11 +191,11 @@ In a single message, spawn all four adversary personas simultaneously. The input
 - `transcript_path: <CLEANED_TRANSCRIPT_PATH>` — a file path, not inline transcript text
 - The disposed-id lock list (hard constraint: do not raise threads with these ids)
 
-Agents to spawn (by registered agent name, not file path):
-- `personas:persona-grounding` — hunts unsupported content and fabricated rationale
-- `personas:persona-accuracy` — hunts semantic drift and stale-resolution
-- `personas:persona-completeness` — hunts missed branches, premature closure, dropped dependencies, merge-loss
-- `personas:persona-coherence` — hunts contradiction, misclassification, dropped human dispositions, relabel-resurrection
+Agents to spawn (by registered agent name, not file path; these are the exact `subagent_type` values, no namespace prefix):
+- `persona-grounding` — hunts unsupported content and fabricated rationale
+- `persona-accuracy` — hunts semantic drift and stale-resolution
+- `persona-completeness` — hunts missed branches, premature closure, dropped dependencies, merge-loss
+- `persona-coherence` — hunts contradiction, misclassification, dropped human dispositions, relabel-resurrection
 
 Each persona returns a JSON array of refutation objects (`[]` if nothing found). Normal-form object shape (inlined — no need to open the contract): `{persona, field, claim, problem, transcript_span}` where `transcript_span` is a verbatim quote or `null`. Error-form: an array whose objects carry an `error` key — detect these by the presence of `error` and never forward them to the judge stage. On a parse mismatch, non-JSON response, or timeout (see timeout policy above), retry that persona once. If the retry also fails, note the failure (agent name + error) and continue to 3c.
 
@@ -172,14 +203,14 @@ Each persona returns a JSON array of refutation objects (`[]` if nothing found).
 
 #### 3c. Short-circuit or adjudicate (batched)
 
-**If all four personas return empty arrays (`[]`):** skip the judge stage entirely. There are no refutations to adjudicate. Proceed directly to step 3d with `refutations_upheld: 0` and `refutations_screened: 0`.
+**If all four personas return empty arrays (`[]`):** skip the judge stage entirely. There are no refutations to adjudicate. Proceed directly to step 3d with `refutations_upheld: 0`, `refutations_screened: 0`, and `refutations_reescalated: 0`.
 
 **Otherwise:** the judge stage is batched — at most `1 + 3` Sonnet spawns total, regardless of how many refutations there are. Judges read a small windowed evidence pack, not the full transcript.
 
 **Prep — mint ids and build the evidence pack (do this once):**
 
 1. Merge all normal-form refutations from the four personas into one list. Assign each a stable `ref_id` (`r0`, `r1`, …) in list order. Drop error-form objects (the `error`-key ones) — they never reach the judge.
-2. Write the merged list (each object including its `ref_id`) to `/tmp/refutations-${CLAUDE_CODE_SESSION_ID}.json`. Store as `REFUTATIONS_PATH`.
+2. Write the merged list (each object including its `ref_id`) with the Write tool, not a bash heredoc, to `/tmp/refutations-${CLAUDE_CODE_SESSION_ID}.json`. Store as `REFUTATIONS_PATH`.
 3. Build the windowed evidence pack:
    ```bash
    bash ~/.dotfiles/claude-code-shared/scripts/seed-review/window-transcript-spans.sh \
@@ -190,17 +221,24 @@ Each persona returns a JSON array of refutation objects (`[]` if nothing found).
 
    **Span coverage check:** parse M from the script's `OK: <N> refutations, <M> spans located, ...` line. Let S be the count of refutations with a non-null `transcript_span`. Absence claims (null span) never count as misses. A span quoted from calling-skill ARGUMENTS may not appear in the cleaned transcript, so a miss there is expected. Tell the screener the span came from ARGUMENTS and have it check the ARGUMENTS text in the raw transcript. If M is 0 and S > 0, the pack is suspect, likely a cleaned-transcript scope issue. In that case, tell the screener in its prompt that the pack located 0 spans, and also pass `raw_transcript_path: <RAW_TRANSCRIPT_PATH>`. The screener must grep that file, including assistant messages, before it rejects any refutation on `SPAN NOT FOUND` alone. If 0 < M < S, print a one-line warning to the user naming the ref_ids whose pack section reads `SPAN NOT FOUND`. Then continue to the screener. Pass `raw_transcript_path: <RAW_TRANSCRIPT_PATH>` for those ref_ids, and the same grep rule applies to them. This is a warning, not a stop.
 
-**Round 1 — screener (1 Sonnet judge over the whole batch):** spawn one `personas:persona-judge` instance (Sonnet). Its prompt carries: the full `REFUTATIONS_PATH` array (inline the JSON or pass the path and have it Read — passing inline is fine since it is small), `evidence_pack_path: <EVIDENCE_PACK_PATH>`, `transcript_path: <CLEANED_TRANSCRIPT_PATH>` (escape hatch — the judge defaults to the pack and only greps the full transcript when far-context settles a verdict), and `seed_path: <SEED_PATH>`. It returns a verdict array — one `{ref_id, verdict, reason}` per refutation. Validate against the inlined verdict shape below (open `~/.dotfiles/claude-code-shared/contracts/verdict-contract.md` only on suspected drift). On a parse mismatch, non-JSON response, or timeout (see timeout policy above), retry that judge once.
+**Round 1 — screener (1 Sonnet judge over the whole batch):** spawn one `persona-judge` instance (Sonnet). Its prompt carries: the full `REFUTATIONS_PATH` array (inline the JSON or pass the path and have it Read — passing inline is fine since it is small), `evidence_pack_path: <EVIDENCE_PACK_PATH>`, `transcript_path: <CLEANED_TRANSCRIPT_PATH>` (escape hatch — the judge defaults to the pack and only greps the full transcript when far-context settles a verdict), and `seed_path: <SEED_PATH>`. It returns a verdict array — one `{ref_id, verdict, reason}` per refutation. Validate against the inlined verdict shape below (open `~/.dotfiles/claude-code-shared/contracts/verdict-contract.md` only on suspected drift). On a parse mismatch, non-JSON response, or timeout (see timeout policy above), retry that judge once.
 
-- For each `ref_id` the screener marks `rejected`: increment `refutations_screened`. It is terminated — it does not escalate.
-- The set of `ref_id`s marked `upheld` is the **escalation set**.
+- For each `ref_id` the screener marks `rejected`: increment `refutations_screened`. It is terminated and does not escalate, unless the tool_result rule below applies.
+- **Tool_result re-escalation (narrow):** the orchestrator never flips a screener verdict itself. A `rejected` ref_id may go to round 2 only when all of these hold:
+  - The screener's `reason` says the evidence was ambiguous, missing, or `SPAN NOT FOUND`. A reason that rules on judgment does not qualify, such as "problem does not follow" or "out of context".
+  - A `tool_result` in the transcript resolves that gap. Example: the orchestrator's own bash output lists the PRs in an unambiguous order.
+  - You can quote that `tool_result` text verbatim. A fixed-string grep of the cleaned or raw transcript finds the quote.
+  When all hold, add the ref_id to the escalation set. Count it in `refutations_reescalated`, not `refutations_screened`. Give the panel the verbatim quote and say which transcript file holds it. If that file is the raw transcript, also pass `raw_transcript_path: <RAW_TRANSCRIPT_PATH>`. Add no argument of your own. The panel must grep the quote before relying on it. Each ref_id may be re-escalated at most once. If in doubt, leave the rejection standing.
+- The set of `ref_id`s marked `upheld`, plus any re-escalated under the rule above, is the **escalation set**.
 - **Screener fails after retry:** record the failure (degraded-path accounting as in 3b) and go to 3d on the degraded path — do not run round 2 on an unscreened batch.
 
-**Round 2 — panel (3 Sonnet judges over the escalation set):** if the escalation set is empty, skip round 2. Otherwise spawn 3 fresh `personas:persona-judge` instances simultaneously (Sonnet), each receiving only the **upheld subset** of refutations (with their `ref_id`s), the same `EVIDENCE_PACK_PATH`, `transcript_path: <CLEANED_TRANSCRIPT_PATH>` (same escape hatch), and `seed_path`. The round-1 verdicts are not reused as a pre-vote — all 3 panelists judge the subset fresh. Each returns a verdict array. Retry any panelist once on a parse mismatch or timeout (see timeout policy above).
+**Round 2 — panel (3 Sonnet judges over the escalation set):** if the escalation set is empty, skip round 2. Otherwise spawn 3 fresh `persona-judge` instances simultaneously (Sonnet), each receiving only the **escalation set** of refutations (with their `ref_id`s and any re-escalation quote), the same `EVIDENCE_PACK_PATH`, `transcript_path: <CLEANED_TRANSCRIPT_PATH>` (same escape hatch), and `seed_path`. The round-1 verdicts are not reused as a pre-vote — all 3 panelists judge the subset fresh. Each returns a verdict array. Retry any panelist once on a parse mismatch or timeout (see timeout policy above).
 
-Apply a flat 2-of-3 majority **per `ref_id`**: a refutation is upheld only if ≥2 non-failed panelists return `upheld` for that id. Apply every upheld refutation to the draft seed in memory (see adversarial framing above). Refutations that fall to a `rejected` majority are dropped.
+Apply a flat 2-of-3 majority **per `ref_id`**: a refutation is upheld only if ≥2 non-failed panelists return `upheld` for that id. Apply every upheld refutation to the draft seed in memory (see adversarial framing above). If applying one surfaces a new consequence the user never decided, add it to `open_threads`, not `decisions`. Decisions come only from what the user stated or accepted. Refutations that fall to a `rejected` majority are dropped.
 
 **Verdict shape (inlined):** the judge response is a JSON array; each element is `{ref_id, verdict, reason}` with `verdict` ∈ `{upheld, rejected}`, or an error-form array `[{error, details?}]` on failure.
+
+**Verdict coverage (screener and each panelist):** after the shape check, confirm the judge's verdict `ref_id` set equals its input `ref_id` set. If ids are missing, re-prompt that judge once for the missing ids only. This shares the judge's single retry, so a judge already retried for a parse mismatch or timeout gets no second re-prompt. Ids still missing count as a failure of that judge for those ids. For the screener, apply the screener-failure rule. For a panelist, count it as failed for those ids in the 2-of-3 tally.
 
 **Failure handling (round-2 panel):** if 2 or more of the 3 panelists fail (error-form, unparseable, or timed out after retry), the panel is unusable — record the failure, leave the escalation set's refutations unapplied, and take the degraded path at 3d.
 
@@ -208,12 +246,9 @@ Apply a flat 2-of-3 majority **per `ref_id`**: a refutation is upheld only if �
 
 After all refutations are adjudicated:
 
-1. Delete the verification temp files (some may not exist if the judge stage was skipped — the existence guard tolerates that, and plain `rm` passes the destructive-fs hook that blocks force-delete):
+1. Delete the verification temp files. Some may not exist if the judge stage was skipped. The script skips missing paths and unset vars. Do not run `rm` over these variables.
    ```bash
-   for f in "${CLEANED_TRANSCRIPT_PATH}" "${SEED_PATH}" \
-            "${REFUTATIONS_PATH}" "${EVIDENCE_PACK_PATH}"; do
-     [ -e "$f" ] && rm "$f"
-   done
+   bash ~/.dotfiles/claude-code-shared/scripts/seed-review/cleanup-verification-temp.sh "${CLEANED_TRANSCRIPT_PATH}" "${SEED_PATH}" "${REFUTATIONS_PATH}" "${EVIDENCE_PACK_PATH}"
    ```
 
 2. Write the `verification` field onto the draft seed:
@@ -224,6 +259,7 @@ After all refutations are adjudicated:
   "personas": ["grounding", "accuracy", "completeness", "coherence"],
   "refutations_upheld": <count of upheld refutations>,
   "refutations_screened": <count of refutations the round-1 screener marked rejected (never escalated)>,
+  "refutations_reescalated": <count of screener-rejected refutations sent to round 2 under the tool_result rule>,
   "clean": <true if refutations_upheld === 0>,
   "status": "verified"
 }
@@ -245,10 +281,13 @@ Abort is never an option. The seed is always written. If the user picks option 2
 
 ### 4. Write the seed file
 
+In Mode 3, skip steps 1–3 below and write back to the named seed path. No new timestamped file.
+
 1. Derive a slug from the title (lowercase, kebab-case, max ~40 chars).
 2. Run `~/.dotfiles/claude-code-shared/scripts/scaffolding/doc-filename.sh <slug> json` to get the filename (`YYYYMMDD-HHMM-<slug>.json`).
-3. Resolve the output path: `docs/seeds/<filename>`. Create `docs/seeds/` if it does not exist.
-4. Write the JSON file with all required fields including `schema_version: "4"`, `producer`, `source`, `status`, and `verification`. Never auto-commit.
+3. Resolve the output path: `docs/seeds/<filename>` under the git toplevel (`git rev-parse --show-toplevel`), not cwd. Outside a git repo, use cwd. Create `docs/seeds/` if it does not exist.
+4. Write the JSON file with the Write tool. Include all required fields including `schema_version: "4"`, `producer`, `source`, `status`, and `verification`. Never auto-commit.
+5. Validate the written seed: `bash ~/.dotfiles/claude-code-shared/scripts/seed-review/validate-seed.sh <seed-path>`. On failure, fix the draft, rewrite the same path, and re-run. Do not stop with an invalid seed on disk.
 
 ### 5. Pipeline gate
 

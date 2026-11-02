@@ -8,7 +8,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command')
 
 # Detect writes to JS/TS files containing ES5 'var' keyword
 IS_WRITE=$(echo "$COMMAND" | grep -qE '(>>?|tee\s|<<\s*[A-Z_'"'"']+)' && echo "true" || echo "false")
-TARGETS_JS_TS=$(echo "$COMMAND" | grep -qE '\.(js|ts|tsx|jsx)' && echo "true" || echo "false")
+TARGETS_JS_TS=$(echo "$COMMAND" | grep -qE '\.(js|ts|tsx|jsx)([^a-zA-Z0-9_]|$)' && echo "true" || echo "false")
 HAS_VAR=$(echo "$COMMAND" | grep -qE '\bvar\s+[a-zA-Z_$]' && echo "true" || echo "false")
 
 if [ "$IS_WRITE" = "true" ] && [ "$TARGETS_JS_TS" = "true" ] && [ "$HAS_VAR" = "true" ]; then

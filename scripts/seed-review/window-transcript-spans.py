@@ -9,6 +9,10 @@ transcript, which is the dominant token cost in the to-seed verification stage.
 Each refutation must carry a stable `ref_id` (minted by the orchestrator) and a
 `transcript_span` (verbatim quote, or null for absence-type claims).
 
+Matching tolerates differences in case, whitespace, line breaks, backslash
+escaping (\\" \\' \\` and literal \\n), curly quotes, and markdown emphasis
+(*, _, `). Normalization is match-only: the emitted window is raw transcript text.
+
 Output sections, one per ref_id:
   ## <ref_id>
   <windowed context, or a marker if the span is absent / not found>
@@ -28,17 +32,46 @@ Exit codes:
 import sys
 import json
 import re
+import bisect
 import pathlib
 
 CHARS_BEFORE = 600      # chars before the match on the hit line
 CHARS_AFTER = 1000      # chars after the match on the hit line
 NEIGHBOR_CAP = 500      # chars kept from each adjacent line
 WS = re.compile(r"\s+")
+ESCAPED_QUOTE = re.compile(r"\\([\"'`])")
+EMPHASIS = re.compile(r"[*_`]")
+CURLY_QUOTES = str.maketrans({"\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'"})
 
 
 def normalize(text: str) -> str:
-    """Lowercase and collapse whitespace for fuzzy substring matching."""
+    """Normalize text for fuzzy substring matching (applied to span and transcript alike).
+
+    Unescapes \\" \\' \\` and literal \\n, maps curly quotes to straight, strips
+    markdown emphasis characters (*, _, `), collapses whitespace, lowercases.
+    """
+    text = text.replace("\\n", " ")
+    text = ESCAPED_QUOTE.sub(r"\1", text)
+    text = text.translate(CURLY_QUOTES)
+    text = EMPHASIS.sub("", text)
     return WS.sub(" ", text).strip().lower()
+
+
+def build_joined(norm_lines):
+    """Join non-empty normalized lines with single spaces for cross-line matching.
+
+    Returns (joined_text, starts, line_idx): starts[k] is the offset in joined_text
+    where original line line_idx[k] begins.
+    """
+    parts, starts, line_idx, pos = [], [], [], 0
+    for i, ln in enumerate(norm_lines):
+        if not ln:
+            continue
+        parts.append(ln)
+        starts.append(pos)
+        line_idx.append(i)
+        pos += len(ln) + 1
+    return " ".join(parts), starts, line_idx
 
 
 def cap_neighbor(line: str) -> str:
@@ -48,34 +81,47 @@ def cap_neighbor(line: str) -> str:
     return line[:NEIGHBOR_CAP] + " […]"
 
 
-def window_for_span(lines, norm_lines, span: str) -> str:
+def build_window(lines, i, last, pos, span_len) -> str:
+    """Window raw text around a match starting on line i and ending on line last."""
+    # Slice the raw hit line around an approximate match offset.
+    raw = lines[i].rstrip("\n")
+    # Map normalized offset back to a rough raw offset (best-effort).
+    approx = min(pos, max(0, len(raw) - 1))
+    start = max(0, approx - CHARS_BEFORE)
+    end = min(len(raw), approx + span_len + CHARS_AFTER)
+    hit = raw[start:end]
+    if start > 0:
+        hit = "[…] " + hit
+    if end < len(raw):
+        hit = hit + " […]"
+    parts = []
+    if i > 0:
+        parts.append(cap_neighbor(lines[i - 1]))
+    parts.append(hit)
+    # Lines the span continues onto, plus one trailing neighbor.
+    for k in range(i + 1, min(last + 2, len(lines))):
+        parts.append(cap_neighbor(lines[k]))
+    return "\n".join(parts)
+
+
+def window_for_span(lines, norm_lines, joined, span: str) -> str:
     """Return a windowed context string for span, or None if not found."""
     span_norm = normalize(span)
     if not span_norm:
         return None
+    # Fast path: span sits on a single line.
     for i, ln in enumerate(norm_lines):
         pos = ln.find(span_norm)
-        if pos == -1:
-            continue
-        # Found on line i. Slice the raw line around an approximate match offset.
-        raw = lines[i].rstrip("\n")
-        # Map normalized offset back to a rough raw offset (best-effort).
-        approx = min(pos, max(0, len(raw) - 1))
-        start = max(0, approx - CHARS_BEFORE)
-        end = min(len(raw), approx + len(span) + CHARS_AFTER)
-        hit = raw[start:end]
-        if start > 0:
-            hit = "[…] " + hit
-        if end < len(raw):
-            hit = hit + " […]"
-        parts = []
-        if i > 0:
-            parts.append(cap_neighbor(lines[i - 1]))
-        parts.append(hit)
-        if i + 1 < len(lines):
-            parts.append(cap_neighbor(lines[i + 1]))
-        return "\n".join(parts)
-    return None
+        if pos != -1:
+            return build_window(lines, i, i, pos, len(span))
+    # Slow path: span wraps across line breaks.
+    joined_text, starts, line_idx = joined
+    pos = joined_text.find(span_norm)
+    if pos == -1:
+        return None
+    k = bisect.bisect_right(starts, pos) - 1
+    k_end = bisect.bisect_right(starts, pos + len(span_norm) - 1) - 1
+    return build_window(lines, line_idx[k], line_idx[k_end], pos - starts[k], len(span))
 
 
 def main():
@@ -111,6 +157,7 @@ def main():
 
     lines = transcript_path.read_text(encoding="utf-8", errors="replace").splitlines()
     norm_lines = [normalize(ln) for ln in lines]
+    joined = build_joined(norm_lines)
 
     sections = []
     found = 0
@@ -120,7 +167,7 @@ def main():
         if span is None:
             body = "ABSENCE CLAIM — no transcript span; adjudicate via seed."
         else:
-            ctx = window_for_span(lines, norm_lines, str(span))
+            ctx = window_for_span(lines, norm_lines, joined, str(span))
             if ctx is None:
                 body = "SPAN NOT FOUND IN TRANSCRIPT — span text does not appear; treat as unsupported."
             else:

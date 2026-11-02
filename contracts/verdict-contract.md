@@ -52,8 +52,8 @@ On unrecoverable failure, the judge returns a single-element array carrying an e
 
 The escalation ladder is unchanged in spirit, only batched:
 
-- **Round 1 (screener):** one judge call over all refutations. Each refutation with verdict `rejected` is terminated (counted in `refutations_screened`). Each `upheld` escalates.
-- **Round 2 (panel):** three fresh judge calls, each over the upheld subset. Apply a flat 2-of-3 majority per `ref_id`:
+- **Round 1 (screener):** one judge call over all refutations. Each refutation with verdict `rejected` is terminated (counted in `refutations_screened`). Each `upheld` escalates. One narrow exception: a rejection whose reason cites missing or ambiguous evidence may escalate when a verbatim transcript `tool_result` resolves it (counted in `refutations_reescalated`). See to-seed SKILL.md step 3c.
+- **Round 2 (panel):** three fresh judge calls, each over the escalation set (upheld plus re-escalated). Apply a flat 2-of-3 majority per `ref_id`:
   - 2 or 3 `upheld` → refutation upheld; apply it to the draft seed
   - 2 or 3 `rejected` → refutation rejected; no change
   - If 2 or more judge calls return error-form arrays, the whole round is degraded; record the failure
