@@ -12,8 +12,19 @@
  *     --state  <storage-state-path | null>             \
  *     --out    <output-dir>                            \
  *     [--baseline-dir <dir>]   # dir with baseline PNGs for diff
+ *     [--params <json>]        # values for :param placeholders in goto urls
+ *     [--repo <Org/Repo>]      # resolve named viewports from repo-policy.json
+ *     [--frozen-time <iso|ms>] # page clock; default is midnight UTC today
  *
- * Check Spec format:
+ * Contract step format (contracts/task-schema.json browser_verify):
+ *   {"type": "goto",    "url": "/watch/:videoSlug"}           // :param filled from --params
+ *   {"type": "click",   "locator": "role=button[name=\"Go\"]"}
+ *   {"type": "fill",    "locator": "css=#email", "value": "x"}
+ *   {"type": "waitFor", "condition": "networkidle"}            // or load, domcontentloaded, or a selector
+ *   {"type": "expect",  "locator": "text=Hi", "assertion": "visible|hidden|text|count", "value": "..."}
+ *   viewports may be names ("desktop", "mobile") resolved via --repo or built-in defaults.
+ *
+ * Legacy Check Spec format (still accepted):
  * {
  *   "role":      "default",           // optional
  *   "viewports": [{"width":1440,"height":900}],  // optional, defaults to desktop
@@ -55,7 +66,7 @@ const __dirname  = dirname(__filename);
 function parseArgs(argv) {
   const out = {
     spec: null, baseUrl: null, state: null,
-    outDir: null, baselineDir: null,
+    outDir: null, baselineDir: null, params: null, repo: null, frozenTime: null,
   };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
@@ -64,6 +75,9 @@ function parseArgs(argv) {
       case '--state':        out.state       = argv[++i]; break;
       case '--out':          out.outDir      = argv[++i]; break;
       case '--baseline-dir': out.baselineDir = argv[++i]; break;
+      case '--params':       out.params      = argv[++i]; break;
+      case '--repo':         out.repo        = argv[++i]; break;
+      case '--frozen-time':  out.frozenTime  = argv[++i]; break;
       default:
         if (argv[i].startsWith('--'))
           console.warn(`browser-verify: unknown flag ignored: ${argv[i]}`);
@@ -90,10 +104,28 @@ function tryRequireFrom(dirs, name) {
 
 // ── Determinism ──────────────────────────────────────────────────────────────
 
+/**
+ * Default frozen clock: midnight UTC of the current day. Baseline and Candidate
+ * runs on the same day see the same time, while date-relative app state (trial
+ * expiry, period ends, session refresh) still matches real data. A fixed past
+ * date made every expired trial look active and stopped auth token refresh.
+ */
+const startOfUtcDay = () => {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+};
+
+const parseFrozenTime = (rawValue) => {
+  if (!rawValue) return startOfUtcDay();
+  const parsed = /^\d+$/.test(rawValue) ? Number(rawValue) : Date.parse(rawValue);
+  if (Number.isNaN(parsed)) throw new Error(`invalid --frozen-time "${rawValue}"`);
+  return parsed;
+};
+
 /** Injected before every navigation to freeze Date and Math.random. */
-const DETERMINISM_INIT_SCRIPT = `
+const buildDeterminismInitScript = (frozenTimestamp) => `
 (function () {
-  const FROZEN_TS = 1700000000000; // 2023-11-14T22:13:20Z
+  const FROZEN_TS = ${frozenTimestamp};
   const _Date = Date;
   class FrozenDate extends _Date {
     constructor(...a) { super(...(a.length ? a : [FROZEN_TS])); }
@@ -126,11 +158,55 @@ const DISABLE_ANIMATIONS_CSS = `
 // ── Locator helper ───────────────────────────────────────────────────────────
 
 function buildLocator(page, step) {
+  if (step.locator)  return page.locator(step.locator);
   if (step.role)     return page.getByRole(step.role, step.name ? { name: step.name } : {});
   if (step.text)     return page.getByText(step.text, { exact: false });
   if (step.label)    return page.getByLabel(step.label);
   if (step.selector) return page.locator(step.selector);
-  throw new Error(`step has no selector/role/text/label: ${JSON.stringify(step)}`);
+  throw new Error(`step has no locator/selector/role/text/label: ${JSON.stringify(step)}`);
+}
+
+// ── Contract helpers ─────────────────────────────────────────────────────────
+
+const LOAD_STATES = new Set(['networkidle', 'load', 'domcontentloaded']);
+
+const DEFAULT_VIEWPORTS = {
+  desktop: { width: 1440, height: 900 },
+  mobile:  { width: 390,  height: 844 },
+};
+
+/** Map viewport names to {width, height} via repo-policy.json, then built-in defaults. */
+function resolveViewports(rawViewports, repo) {
+  if (!rawViewports) return [DEFAULT_VIEWPORTS.desktop];
+  let policyViewports = [];
+  if (repo) {
+    try {
+      const policyPath = resolve(__dirname, '../../resources/repo-policy.json');
+      policyViewports = JSON.parse(readFileSync(policyPath, 'utf8'))[repo]?.viewports ?? [];
+    } catch (e) {
+      console.warn(`browser-verify: could not read repo-policy viewports: ${e.message}`);
+    }
+  }
+  return rawViewports.map((viewport) => {
+    if (typeof viewport !== 'string') return viewport;
+    const fromPolicy = policyViewports.find((entry) => entry.name === viewport);
+    const resolved = fromPolicy ?? DEFAULT_VIEWPORTS[viewport];
+    if (!resolved) throw new Error(`unknown viewport name "${viewport}"`);
+    return { width: resolved.width, height: resolved.height };
+  });
+}
+
+/** Replace :param placeholders in a path. Throws when any remain unresolved. */
+function fillUrlParams(url, params) {
+  // Only a ":name" directly after "/" is a path param, so scheme and port colons are untouched.
+  const filled = url.replace(/\/:([A-Za-z_][A-Za-z0-9_]*)/g, (match, name) =>
+    params[name] !== undefined ? `/${encodeURIComponent(params[name])}` : match,
+  );
+  const unresolved = filled.match(/\/:([A-Za-z_][A-Za-z0-9_]*)/);
+  if (unresolved) {
+    throw new Error(`unresolved url param ":${unresolved[1]}" in "${url}". Pass it via --params`);
+  }
+  return filled;
 }
 
 // ── Pixel diff ────────────────────────────────────────────────────────────────
@@ -204,8 +280,18 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
 
   // ── Storage state ──────────────────────────────────────────────────────────
-  const storageState =
-    args.state && args.state !== 'null' ? resolve(args.state) : undefined;
+  // Auth state is captured against one origin (the repo probe_url), but the
+  // Baseline server runs on an offset port. Rebase localStorage origins onto
+  // --base-url in memory so both servers load the same signed-in session.
+  const storageState = (() => {
+    if (!args.state || args.state === 'null') return undefined;
+    const stateObject = JSON.parse(readFileSync(resolve(args.state), 'utf8'));
+    const targetOrigin = new URL(args.baseUrl).origin;
+    return {
+      ...stateObject,
+      origins: (stateObject.origins ?? []).map((originEntry) => ({ ...originEntry, origin: targetOrigin })),
+    };
+  })();
 
   // ── Resolve playwright ─────────────────────────────────────────────────────
   const resolveDirs = [process.cwd(), __dirname];
@@ -239,7 +325,11 @@ async function main() {
   }
 
   // ── Per-viewport runs ──────────────────────────────────────────────────────
-  const viewports   = spec.viewports ?? [{ width: 1440, height: 900 }];
+  const urlParams   = args.params
+    ? JSON.parse(args.params.trim().startsWith('{') ? args.params : readFileSync(args.params, 'utf8'))
+    : {};
+  const viewports   = resolveViewports(spec.viewports, args.repo);
+  const determinismInitScript = buildDeterminismInitScript(parseFrozenTime(args.frozenTime));
   const role        = spec.role ?? 'default';
   const masks       = spec.masks ?? [];
   const viewportResults = [];
@@ -261,7 +351,7 @@ async function main() {
     const page = await context.newPage();
 
     // Inject determinism before any navigation
-    await page.addInitScript(DETERMINISM_INIT_SCRIPT);
+    await page.addInitScript(determinismInitScript);
 
     // Capture console errors and unhandled rejections
     page.on('console', (msg) => {
@@ -279,14 +369,18 @@ async function main() {
         if (step.selector !== undefined) sr.selector = step.selector;
         if (step.role     !== undefined) sr.role     = step.role;
         if (step.text     !== undefined) sr.text     = step.text;
+        if (step.locator  !== undefined) sr.locator  = step.locator;
+        if (step.condition !== undefined) sr.condition = step.condition;
+        if (step.assertion !== undefined) sr.assertion = step.assertion;
 
         try {
           switch (step.type) {
             // ── goto ────────────────────────────────────────────────────────
             case 'goto': {
-              const url = /^https?:\/\//.test(step.url)
-                ? step.url
-                : `${args.baseUrl}${step.url}`;
+              const filledPath = fillUrlParams(step.url, urlParams);
+              const url = /^https?:\/\//.test(filledPath)
+                ? filledPath
+                : `${args.baseUrl}${filledPath}`;
               await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
               // Kill CSS transitions/animations after navigation
               await page.addStyleTag({ content: DISABLE_ANIMATIONS_CSS });
@@ -321,7 +415,13 @@ async function main() {
 
             // ── waitFor ─────────────────────────────────────────────────────
             case 'waitFor': {
-              const loc = buildLocator(page, step);
+              if (step.condition && LOAD_STATES.has(step.condition)) {
+                await page.waitForLoadState(step.condition, { timeout: 15_000 });
+                break;
+              }
+              const loc = step.condition
+                ? page.locator(step.condition)
+                : buildLocator(page, step);
               await loc.waitFor({ state: 'visible', timeout: 15_000 });
               break;
             }
@@ -374,7 +474,24 @@ async function main() {
             // ── expect ──────────────────────────────────────────────────────
             case 'expect': {
               const loc = buildLocator(page, step);
-              if (step.text !== undefined) {
+              if (step.assertion === 'hidden') {
+                // Passes when the element is absent or not visible.
+                await loc.first().waitFor({ state: 'hidden', timeout: 5_000 });
+              } else if (step.assertion === 'count') {
+                const actualCount = await loc.count();
+                if (actualCount !== Number(step.value)) {
+                  throw new Error(`expect count ${step.value} but found ${actualCount}`);
+                }
+              } else if (step.assertion === 'text') {
+                const actual = await loc.first().textContent({ timeout: 5_000 });
+                if (!actual?.includes(step.value ?? '')) {
+                  throw new Error(
+                    `expect text "${step.value}" not found in "${actual?.slice(0, 120)}"`,
+                  );
+                }
+              } else if (step.assertion === 'visible') {
+                await loc.first().waitFor({ state: 'visible', timeout: 5_000 });
+              } else if (step.text !== undefined) {
                 const actual = await loc.textContent({ timeout: 5_000 });
                 if (!actual?.includes(step.text)) {
                   throw new Error(

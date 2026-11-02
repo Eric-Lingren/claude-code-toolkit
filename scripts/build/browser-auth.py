@@ -104,6 +104,10 @@ def is_fresh(state_path: Path, auth_profile: dict) -> bool:
     if age > FRESHNESS_TTL:
         return False
 
+    # api_login sessions (e.g. Supabase) expire well before FRESHNESS_TTL.
+    if _stored_session_expired(state_path):
+        return False
+
     probe_url = auth_profile.get("probe_url")
     if probe_url:
         try:
@@ -114,6 +118,32 @@ def is_fresh(state_path: Path, auth_profile: dict) -> bool:
             return True
 
     return True
+
+
+SESSION_EXPIRY_MARGIN = 120  # seconds of validity required before reusing a session
+
+
+def _stored_session_expired(state_path: Path) -> bool:
+    """
+    Return True when any localStorage session in the state file carries an
+    `expires_at` (epoch seconds) that has passed or is within the margin.
+    State files without such a field are left to the other checks.
+    """
+    try:
+        state = json.loads(state_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return True
+
+    for origin_entry in state.get("origins", []):
+        for item in origin_entry.get("localStorage", []):
+            try:
+                session = json.loads(item.get("value", ""))
+            except (TypeError, json.JSONDecodeError):
+                continue
+            expires_at = session.get("expires_at") if isinstance(session, dict) else None
+            if isinstance(expires_at, (int, float)) and expires_at < time.time() + SESSION_EXPIRY_MARGIN:
+                return True
+    return False
 
 
 def _playwright_freshness_check(state_path: Path, probe_url: str) -> bool:
