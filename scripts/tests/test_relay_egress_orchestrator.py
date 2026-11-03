@@ -64,11 +64,17 @@ class TestRelayCharacterization:
             "relay SKILL.md must describe a HITL approval gate before posting"
         )
 
-    def test_relay_maintains_copy_only_invariant(self):
-        """relay enforces NO EXTERNAL CALLS MADE — nothing is posted without explicit approval."""
+    def test_relay_requires_explicit_approval_before_posting(self):
+        """relay posts live to GitHub, so nothing is posted without two explicit approval gates."""
         text = RELAY_SKILL.read_text()
-        assert "NO EXTERNAL CALLS MADE" in text, (
-            "relay SKILL.md must include the NO EXTERNAL CALLS MADE invariant banner"
+        assert "HITL approval" in text, (
+            "relay SKILL.md must gate posting behind HITL approval"
+        )
+        assert "Proceed? (y/n)" in text, (
+            "relay SKILL.md must show a second confirmation gate before posting"
+        )
+        assert "copy-only" in text, (
+            "relay SKILL.md must still describe copy-only stub adapters (Linear, Slack)"
         )
 
     def test_relay_mentions_thread_id_fields(self):
@@ -198,8 +204,8 @@ class TestDispatchRelayPostGithubChain:
         assert "agents/egress" in relay_text, (
             "relay must reference agents/egress/ adapters to complete the dispatch chain"
         )
-        assert "NO EXTERNAL CALLS MADE" in post_github_text, (
-            "post-github must have the copy-only invariant banner — it is the terminal adapter"
+        assert "gh api" in post_github_text, (
+            "post-github is the live terminal adapter and must post via gh api"
         )
 
     def test_post_github_returns_schema_valid_egress_result(self):
@@ -219,6 +225,7 @@ class TestDispatchRelayPostGithubChain:
         result = json.loads(match.group(1).strip())
         schema = json.loads(schema_path.read_text())
         jsonschema.validate(result, schema)  # raises ValidationError if invalid
-        assert result["status"] == "copy-only", (
-            f"post-github.md example must have status='copy-only', got {result['status']!r}"
+        assert result["status"] == "posted", (
+            f"post-github.md first example must have status='posted', got {result['status']!r}"
         )
+        assert result["posted"] is True

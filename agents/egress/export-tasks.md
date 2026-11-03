@@ -98,10 +98,17 @@ Resolve concrete targets:
 
 ### 4. Wall-crossing check
 
-Read `destinations[item.domain].wall` from `task-routing.json`. Each `corporate`-wall domain is one client or employer, and it is sealed. Compare by domain name, not just by wall type, so two clients never cross:
-- a `corporate`-wall domain (e.g. `acme`) routed to any destination outside its own entry: **HARD WALL VIOLATION**. This includes another corporate domain's destination (e.g. an `acme` item routed to `globex`).
-- any other domain's item routed to a `corporate`-wall domain's destination: **HARD WALL VIOLATION**
-- `spawned-sapien` domain routed to `personal` Notion DB: **WARNING** (soft boundary — separate Notion workspace expected)
+The wall rule lives in one script: `~/.dotfiles/claude-code-shared/scripts/egress/wall-check.sh`. Do not restate or re-derive the rule here. For each item, run it with the item's domain as source and the domain whose `task-routing.json` destinations entry supplied the resolved route (step 3) as destination:
+
+```bash
+bash ~/.dotfiles/claude-code-shared/scripts/egress/wall-check.sh "<item.domain>" "<route_domain>"
+```
+
+Exit-code contract (default mode):
+- **exit 0, no output:** pass.
+- **exit 0 with a `WARNING:` line on stdout:** soft boundary (e.g. `spawned-sapien` to `personal`). Carry the line into the dry-run table; it does not block.
+- **exit 1:** **HARD WALL VIOLATION**. The reason is on stderr. This covers a corporate domain routed outside its own entry (including another corporate domain, so two clients never cross) and any other domain routed into a corporate entry.
+- **exit 2 (or any other non-zero):** config or usage error. Treat as a hard violation (fail closed).
 
 Flag violations in the dry-run table.
 

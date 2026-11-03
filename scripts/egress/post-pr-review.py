@@ -15,10 +15,13 @@ Usage:
   post-pr-review.py --pr 123 --findings findings.json [--summary "text"] [--repo owner/name] [--append-pending] [--dry-run]
 
 Prints the review URL on success. Exits non-zero on gh/API failure.
+
+Refuses to run when REVIEW_WORKER=1 is set (review-watcher sessions are read-only).
 """
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -116,7 +119,15 @@ def append_to_pending(repo, pr_number, inline_comments):
     return review_id
 
 
+def refuse_under_review_worker():
+    """Second safety layer behind the read-only tool allowlist: workers never post."""
+    if os.environ.get("REVIEW_WORKER") == "1":
+        sys.exit("post-pr-review.py: refusing to post: REVIEW_WORKER=1 is set "
+                 "(review worker sessions are read-only). No gh calls were made.")
+
+
 def main():
+    refuse_under_review_worker()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pr", required=True, help="PR number")
     parser.add_argument("--findings", required=True, help="Path to findings JSON array")

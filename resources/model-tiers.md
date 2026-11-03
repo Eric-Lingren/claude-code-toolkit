@@ -10,6 +10,7 @@ from that config.
 |------|-------|--------|-----|
 | T1 | haiku | low | Pure lookup. No reasoning. (`how-to`, `find-work`) |
 | T2 | sonnet | medium | Mechanical, narrow scope. (`tasks-to-linear`, `run-task-followups`) |
+| T2L | sonnet | low | Mechanical, low effort. Short interactive flows that file a small artifact. (`capture`) |
 | T3 | sonnet | high | Standard build. Default tier for unlisted skills. (most skills) |
 | T4 | opus | xhigh | Deep reasoning. (`grill-me`, `grill-with-docs`, `debug`, `improve-codebase-architecture`) |
 
@@ -38,6 +39,20 @@ always called by skills, not by users. So `sync-model-tiers.py` stamps only
 When you assign a tier to an agent, you are declaring the model that agent's
 `.md` frontmatter and `registry.json` entry should carry. The sync enforces
 consistency between the tier config, the frontmatter, and the registry.
+
+## The sessions map
+
+`model-tiers.json` also has a `"sessions"` map for interactive sessions that are
+launched outside a skill and so have no frontmatter to stamp. Each entry names a tier;
+the launcher passes that tier's model and effort as CLI flags. The sync ignores this map.
+
+| Session | Tier | Launcher |
+|---------|------|----------|
+| `capture-hotkey` | T1 (haiku, low) | `scripts/capture/capture` runs `claude --model haiku --effort low "/capture <text>"` |
+
+The `/capture` skill itself is T2L (sonnet, low) for in-session use, `capture review` and
+`capture import`. The hotkey popup overrides it down to Haiku at launch. `capture-idea`
+(agent) is T2 (sonnet). `export-tasks-github` stays T1 (haiku).
 
 ## Moving parts
 

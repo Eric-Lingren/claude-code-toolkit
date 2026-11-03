@@ -20,26 +20,33 @@ class TestAttributionBlockPresent:
         assert "<!-- attribution-capture:end -->" in content
 
 
+RESOURCE_FILE = SHARED / "resources" / "attribution-capture.md"
+
+
+@pytest.fixture(scope="module")
+def resource():
+    return RESOURCE_FILE.read_text()
+
+
 class TestAttributionBlockContent:
-    def test_references_attribution_tracer(self, content):
-        assert "attribution-tracer" in content
+    """The skill block only points at the shared resource; the instructions live there."""
 
-    def test_references_artifact_grounding_judge(self, content):
-        assert "artifact-grounding-judge" in content
-
-    def test_iterates_per_confirmed_issue(self, content):
+    def test_block_references_shared_resource(self, content):
         start = content.find("<!-- attribution-capture:start -->")
         end = content.find("<!-- attribution-capture:end -->")
-        block = content[start:end]
-        lower = block.lower()
-        assert "each" in lower or "per" in lower or "once per" in lower or "for each" in lower
+        assert "resources/attribution-capture.md" in content[start:end]
 
-    def test_says_before_closing_suggestion(self, content):
-        start = content.find("<!-- attribution-capture:start -->")
-        end = content.find("<!-- attribution-capture:end -->")
-        block = content[start:end]
-        lower = block.lower()
-        assert "before" in lower
+    def test_references_attribution_tracer(self, resource):
+        assert "attribution-tracer" in resource
+
+    def test_references_artifact_grounding_judge(self, resource):
+        assert "artifact-grounding-judge" in resource
+
+    def test_iterates_per_confirmed_issue(self, resource):
+        assert "for each confirmed" in resource.lower()
+
+    def test_says_before_closing_suggestion(self, resource):
+        assert "before" in resource.lower()
 
 
 class TestNoMarkerDuplication:
@@ -47,9 +54,10 @@ class TestNoMarkerDuplication:
         count = content.count("<!-- skill-done: pr-code-review -->")
         assert count == 1, f"skill-done: pr-code-review appears {count} times (expected 1)"
 
-    def test_learning_eval_marker_appears_exactly_once(self, content):
-        count = content.count("<!-- learning-eval: pr-code-review -->")
-        assert count == 1, f"learning-eval: pr-code-review appears {count} times (expected 1)"
+    def test_learning_eval_marker_defined_once_in_shared_resource(self):
+        # The marker is printed at run time per the shared resource, not baked into the skill.
+        text = (SHARED / "resources" / "learning-capture.md").read_text()
+        assert text.count("<!-- learning-eval: <slug> -->") == 1
 
 
 class TestBlockIsAdditive:

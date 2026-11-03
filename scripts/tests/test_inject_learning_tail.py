@@ -22,6 +22,11 @@ injector_mod = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(injector_mod)
 
 
+def _in_tree(path):
+    """True unless `path` is a symlink to a skill that lives in another repo."""
+    return pathlib.Path(path).resolve().is_relative_to(SHARED.resolve())
+
+
 @pytest.fixture(scope="module")
 def pipeline():
     return json.loads(PIPELINE_FILE.read_text())
@@ -34,20 +39,19 @@ class TestBuildTailBlock:
         block = injector_mod.build_tail_block("debug", [])
         assert "<!-- skill-done: debug -->" in block
 
-    def test_block_contains_learning_eval_marker_with_slug(self):
+    def test_block_references_shared_learning_capture_resource(self):
+        # The learning-eval marker is printed by the shared resource at run
+        # time, so the per-skill block only points at it and names the slug.
         block = injector_mod.build_tail_block("debug", [])
-        assert "<!-- learning-eval: debug -->" in block
+        assert "resources/learning-capture.md" in block
+        assert "`debug`" in block
+        resource = (SHARED / "resources" / "learning-capture.md").read_text()
+        assert "<!-- learning-eval: <slug> -->" in resource
 
     def test_markers_use_correct_slug(self):
         block = injector_mod.build_tail_block("run-tasks", [])
         assert "<!-- skill-done: run-tasks -->" in block
-        assert "<!-- learning-eval: run-tasks -->" in block
-
-    def test_block_says_before_closing_suggestion(self):
-        block = injector_mod.build_tail_block("debug", [])
-        lower = block.lower()
-        assert "before" in lower
-        assert "closing" in lower or "final" in lower or "suggestion" in lower
+        assert "`run-tasks`" in block
 
     def test_block_does_not_say_after_the_run(self):
         block = injector_mod.build_tail_block("debug", [])
@@ -151,6 +155,8 @@ class TestInjectedBlockContent:
                 continue
             if entry.name in injector_mod.PLUGIN_SKILLS:
                 continue
+            if not _in_tree(entry):
+                continue
             skill_md = entry / "SKILL.md"
             if not skill_md.exists():
                 continue
@@ -160,19 +166,24 @@ class TestInjectedBlockContent:
                 f"{skill_md}: missing marker '{expected}'"
             )
 
-    def test_all_skill_dirs_have_correct_learning_eval_marker(self):
+    def test_all_skill_dirs_have_correct_slug_and_resource_reference(self):
         for entry in sorted(SKILLS_DIR.iterdir()):
             if not entry.is_dir():
                 continue
             if entry.name in injector_mod.PLUGIN_SKILLS:
                 continue
+            if not _in_tree(entry):
+                continue
             skill_md = entry / "SKILL.md"
             if not skill_md.exists():
                 continue
             content = skill_md.read_text()
-            expected = f"<!-- learning-eval: {entry.name} -->"
+            assert "resources/learning-capture.md" in content, (
+                f"{skill_md}: tail block does not reference learning-capture.md"
+            )
+            expected = f"This skill's slug is `{entry.name}`."
             assert expected in content, (
-                f"{skill_md}: missing marker '{expected}'"
+                f"{skill_md}: missing '{expected}'"
             )
 
     def test_block_says_before_not_after(self):

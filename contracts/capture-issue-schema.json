@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "capture-issue-schema",
+  "title": "CaptureIssue",
+  "description": "A captured idea or fix, filed as a GitHub issue. Input to scripts/capture/validate-capture.py, which validates it and renders the fixed markdown issue body. A sealed capture is one made outside a known project or session context: it must carry no where or session, and its rendered body drops those two sections.",
+  "type": "object",
+  "required": ["title", "label", "sealed", "what", "why"],
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "Issue title. Must contain at least one non-whitespace character."
+    },
+    "label": {
+      "type": "string",
+      "enum": ["idea", "fix"],
+      "description": "Issue label. 'idea' for something to explore, 'fix' for something broken."
+    },
+    "sealed": {
+      "type": "boolean",
+      "description": "True when the capture must not carry where or session context. A sealed capture requires where and session to be empty or absent."
+    },
+    "what": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "What is being captured. 1 to 3 lines (at most 2 newline characters)."
+    },
+    "why": {
+      "type": "string",
+      "description": "Why it matters or what triggered the capture. Rendered under the 'Why / trigger' heading."
+    },
+    "where": {
+      "type": "string",
+      "description": "Where it applies (repo, file, URL). Must be empty or absent when sealed is true."
+    },
+    "session": {
+      "type": "string",
+      "description": "Session reference (id, transcript path, or branch). Must be empty or absent when sealed is true."
+    }
+  },
+  "if": {
+    "properties": { "sealed": { "const": true } },
+    "required": ["sealed"]
+  },
+  "then": {
+    "properties": {
+      "where": { "maxLength": 0 },
+      "session": { "maxLength": 0 }
+    }
+  },
+  "examples": [
+    {
+      "title": "Retry flaky review watcher",
+      "label": "fix",
+      "sealed": false,
+      "what": "Review watcher drops a run when the pane closes mid-review.",
+      "why": "Lost a review while switching worktrees.",
+      "where": "~/.dotfiles/.scripts/review-watcher",
+      "session": "branch worktree-agent-ac77e1a5e960502c5"
+    },
+    {
+      "title": "Idea: weekly capture digest",
+      "label": "idea",
+      "sealed": true,
+      "what": "Summarize open captures once a week.",
+      "why": "Captures pile up unread.",
+      "where": "",
+      "session": ""
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# protected_paths.txt: repo-root-relative paths whose change forces a needs-grill draft PR
+# What: list of protected paths (umbrella decision 48), one pattern per line; trailing / = whole folder, else fnmatch glob where * crosses /
+# When: read by check-protected-paths.py; add new gate/dispatcher/writer paths here; "# anticipated" marks entries whose target does not exist yet (Phase 1/2 correct them)
+
+# dispatcher (anticipated)
+claude-code-shared/scripts/dispatch/   # anticipated
+# learnings watcher (anticipated)
+claude-code-shared/scripts/learnings-watcher/   # anticipated
+# review-watcher scripts
+claude-code-shared/scripts/review-watcher/
+# the gate
+run-all-tests.sh
+claude-code-shared/scripts/tests/*smoke*   # anticipated
+claude-code-shared/scripts/tests/test_publish_seed_bank_guard.py
+claude-code-shared/publish.json
+# learning writers and validators
+claude-code-shared/scripts/learning/log-learning.py
+claude-code-shared/scripts/learning/update-learning.py
+claude-code-shared/scripts/learning/verify-anchors.py
+claude-code-shared/scripts/learning/*cluster*   # anticipated
+# settings.json hooks
+claude-code-shared/settings.json
+# repo policy
+claude-code-shared/resources/repo-policy.json
+# change-attribution detector (anticipated)
+claude-code-shared/scripts/attribution/   # anticipated
+# this list and its checker
+claude-code-shared/scripts/protected-paths/protected_paths.txt
+claude-code-shared/scripts/protected-paths/check-protected-paths.py

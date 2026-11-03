@@ -34,7 +34,8 @@ import re
 import sys
 from pathlib import Path
 
-DOTFILES = os.path.expanduser("~/.dotfiles/claude-code-shared")
+# The claude-code-shared dir this script lives in (works for any checkout, not just ~/.dotfiles)
+DOTFILES = str(Path(__file__).resolve().parents[2])
 CONFIG = os.path.join(DOTFILES, "resources", "model-tiers.json")
 SKILLS_DIR = os.path.join(DOTFILES, "skills")
 AGENTS_DIR = os.path.join(DOTFILES, "agents")

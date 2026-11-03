@@ -31,7 +31,7 @@ import os
 import re
 import sys
 
-DOTFILES = os.path.expanduser("~/.dotfiles/claude-code-shared")
+DOTFILES = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SKILLS_DIR = os.environ.get("INJECT_SKILLS_DIR") or os.path.join(DOTFILES, "skills")
 PIPELINE_FILE = os.environ.get("INJECT_PIPELINE_FILE") or os.path.join(DOTFILES, "skill-pipeline.json")
 
@@ -145,6 +145,14 @@ def main():
         skill = entry.name
         if skill in PLUGIN_SKILLS:
             print(f"  SKIP     {skill:40s} (plugin — excluded)")
+            skipped += 1
+            continue
+
+        # Symlinked skills that live in another repo are that repo's to maintain.
+        real_dir = os.path.realpath(entry.path)
+        if os.path.commonpath([real_dir, os.path.realpath(os.path.dirname(skills_dir.rstrip("/")))]) != \
+                os.path.realpath(os.path.dirname(skills_dir.rstrip("/"))):
+            print(f"  SKIP     {skill:40s} (symlink outside tree — excluded)")
             skipped += 1
             continue
 

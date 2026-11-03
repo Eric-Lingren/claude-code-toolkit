@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# capture — hotkey launcher for the macOS Shortcut (Option+I, "I" for idea).
+#
+#   capture <text...>
+#       Records the frontmost app, then opens ONE Terminal.app window that runs
+#       `capture --inner ...`. Returns right away.
+#   capture --inner <prev-app> <result-file> <text...>
+#       Runs inside that Terminal window: Claude in ~/.dotfiles on the cch (home)
+#       profile, Haiku at low effort, prompt "/capture <text>". When Claude exits,
+#       a result file starting with "✓" (written by capture-file.sh through
+#       CAPTURE_RESULT_FILE) quits Terminal and re-activates <prev-app>. Anything
+#       else (ERROR, missing file) leaves the window open and does not re-activate.
+#
+# Env (tests inject stubs): CAPTURE_OSASCRIPT, CAPTURE_CLAUDE, CAPTURE_DIR,
+# CAPTURE_CCH_DIR (default ~/.cch), CAPTURE_SELF (path used in the Terminal command).
+#
+# Shortcut one-time setup: Shortcuts app > new Shortcut "Capture Idea" > Ask for Input (text)
+# > Run Shell Script `~/.dotfiles/claude-code-shared/scripts/capture/capture "$@"` (Input:
+# Provided Input, not Shortcut Input; pass as arguments) > Details > Add Keyboard Shortcut Option+I.
+#
+# Option+I conflict check (2026-11-02, read-only): VS Code user keybindings.json has no
+# alt+i binding; Ghostty config has no keybind entries; no cmux config exists on this
+# machine (~/.config/cmux absent). No conflict found. Note: Option+I is the circumflex
+# dead key ("ˆ") in apps that take plain text; the global Shortcut hotkey takes
+# precedence over that.
+set -uo pipefail
+
+OSA="${CAPTURE_OSASCRIPT:-osascript}"
+CLAUDE_BIN="${CAPTURE_CLAUDE:-$HOME/.local/bin/claude}"
+WORKDIR="${CAPTURE_DIR:-$HOME/.dotfiles}"
+CCH_DIR="${CAPTURE_CCH_DIR:-$HOME/.cch}"
+SELF="${CAPTURE_SELF:-${BASH_SOURCE[0]}}"
+WIN_W="${CAPTURE_WIN_W:-900}"
+WIN_H="${CAPTURE_WIN_H:-520}"
+
+as_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+if [ "${1:-}" = "--inner" ]; then
+  [ $# -ge 3 ] || { echo "usage: capture --inner <prev-app> <result-file> <text...>" >&2; exit 2; }
+  prev="$2"; result="$3"; shift 3
+  cd "$WORKDIR" || { echo "ERROR: cannot cd to $WORKDIR"; exit 1; }
+  rm -f "$result"
+  text="$*"
+  text="${text%"${text##*[![:space:]]}"}"  # Ask for Input can append newlines
+  CAPTURE_RESULT_FILE="$result" CLAUDE_CONFIG_DIR="$CCH_DIR" \
+    "$CLAUDE_BIN" --model haiku --effort low "/capture $text"
+  line="$(head -1 "$result" 2>/dev/null || true)"
+  case "$line" in
+    "✓"*)
+      "$OSA" -e 'tell application "Terminal" to quit' \
+             -e "tell application \"$(as_escape "$prev")\" to activate"
+      ;;
+    *)
+      echo "${line:-ERROR: capture finished without a result}"
+      echo "Terminal left open. Close it when done."
+      ;;
+  esac
+  exit 0
+fi
+
+[ $# -gt 0 ] || { echo "usage: capture <text...>" >&2; exit 2; }
+prev="$("$OSA" -e 'tell application "System Events" to get name of first application process whose frontmost is true' 2>/dev/null)"
+prev="${prev%$'\n'}"
+[ -n "$prev" ] || prev="Finder"
+result="$(mktemp "${TMPDIR:-/tmp}/capture-result.XXXXXX")" || exit 1
+cmd="$(printf '%q ' "$SELF" --inner "$prev" "$result" "$@")"
+# Opens the window centered (WIN_W x WIN_H) on the screen holding the focused window.
+# NSScreen y is bottom-up from the primary screen; Terminal bounds are top-down.
+"$OSA" -e 'use framework "AppKit"' \
+       -e 'use scripting additions' \
+       -e "set {ww, wh} to {$WIN_W, $WIN_H}" \
+       -e "set {{sx, sy}, {sw, sh}} to (current application's NSScreen's mainScreen()'s visibleFrame()) as list" \
+       -e "set ph to item 2 of item 2 of ((current application's NSScreen's screens()'s firstObject()'s frame()) as list)" \
+       -e 'set L to (sx + (sw - ww) / 2) as integer' \
+       -e 'set T to (ph - sy - sh + (sh - wh) / 2) as integer' \
+       -e 'tell application "Terminal"' \
+       -e 'activate' \
+       -e "do script \"$(as_escape "$cmd")\"" \
+       -e 'set bounds of front window to {L, T, L + ww, T + wh}' \
+       -e 'end tell'

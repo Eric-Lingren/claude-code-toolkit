@@ -34,10 +34,10 @@ done
 
 # AC3: schema_version consts
 task_ver=$(python3 -c "import json; d=json.load(open('$CONTRACTS_DIR/task-schema.json')); print(d['properties']['schema_version'].get('const',''))")
-check "task-schema.json schema_version const is '1'" "$([ "$task_ver" = "1" ] && echo true || echo false)"
+check "task-schema.json schema_version const is '2'" "$([ "$task_ver" = "2" ] && echo true || echo false)"
 
 seed_ver=$(python3 -c "import json; d=json.load(open('$CONTRACTS_DIR/seed-schema.json')); print(d['properties']['schema_version'].get('const',''))")
-check "seed-schema.json schema_version const is '2'" "$([ "$seed_ver" = "2" ] && echo true || echo false)"
+check "seed-schema.json schema_version const is '4'" "$([ "$seed_ver" = "4" ] && echo true || echo false)"
 
 runner_ver=$(python3 -c "import json; d=json.load(open('$CONTRACTS_DIR/runner-result-schema.json')); print(d['properties']['schema_version'].get('const',''))")
 check "runner-result-schema.json schema_version const is '1'" "$([ "$runner_ver" = "1" ] && echo true || echo false)"

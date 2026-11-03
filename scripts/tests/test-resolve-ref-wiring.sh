@@ -76,7 +76,7 @@ check_wired "Case 7 dispatch-tasks" "$SKILLS_DIR/dispatch-tasks/SKILL.md"
 check_before "Case 7 dispatch-tasks" "$SKILLS_DIR/dispatch-tasks/SKILL.md" "Read the task file"
 
 # Case 8: attribution-tracer wired for tasks_path and seed_path
-TRACER="$AGENTS_DIR/attribution-tracer.md"
+TRACER="$AGENTS_DIR/learning/attribution-tracer.md"
 check_wired "Case 8 attribution-tracer" "$TRACER"
 # Check wired in both Layer 2 and Layer 3
 if grep -c "resolve-ref.sh" "$TRACER" | grep -q "^2$"; then

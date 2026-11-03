@@ -20,6 +20,7 @@
 #                 state/pr_in_review null until blocker tiers resolve them)
 #   branch        suggested branch name for the start line
 #   created_at    ISO timestamp
+#   seen_again    count of issue comments beginning "seen again:" (case-insensitive)
 #
 # Test hooks: PICK_POLICY (repo-policy.json path), GH_ISSUE_LIST_FIXTURE (path
 # to `gh issue list --json` output replacing the real gh call).
@@ -44,7 +45,7 @@ if [ -n "${GH_ISSUE_LIST_FIXTURE:-}" ]; then
   raw=$(cat "$GH_ISSUE_LIST_FIXTURE")
 else
   raw=$(gh issue list --repo "$repo" --search "$where" --limit 100 \
-    --json number,title,body,labels,assignees,url,createdAt,state)
+    --json number,title,body,labels,assignees,url,createdAt,state,comments)
 fi
 
 RAW="$raw" REPO="$repo" BUCKET="$bucket" CFG="$cfg" python3 - <<'PY'
@@ -71,7 +72,12 @@ for i in json.loads(os.environ["RAW"]):
         "parent": None, "project": None, "blockers": blockers,
         "branch": slug(i["title"], i["number"]),
         "created_at": i.get("createdAt"),
+        "seen_again": sum(1 for c in (i.get("comments") or [])
+                          if re.match(r"(?i)\s*seen again:", c.get("body") or "")),
     })
-print(json.dumps({"repo": repo, "bucket": os.environ["BUCKET"],
-                  "sort": cfg.get("sort", []), "candidates": out}, indent=2))
+doc = {"repo": repo, "bucket": os.environ["BUCKET"],
+       "sort": cfg.get("sort", []), "candidates": out}
+if cfg.get("start"):
+    doc["start"] = cfg["start"]
+print(json.dumps(doc, indent=2))
 PY

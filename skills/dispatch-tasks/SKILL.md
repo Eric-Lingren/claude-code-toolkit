@@ -98,7 +98,7 @@ Triage routing at a glance — 7 items
  T-0142  Final non-code task title                       non-code     HITL   Notion (spawned-sapien)
 ```
 
-If any item resolves to a hard wall crossing (a `corporate`-wall domain routed anywhere outside its own entry, including another client's, or any other domain's item routed into a corporate entry — same rule as `export-tasks` step 4), append a `WARNING:` line per offending item. This is preview only. `export-tasks` still runs its own dry-run and wall check before any write; this table does not authorize writes.
+For each item, run `bash ~/.dotfiles/claude-code-shared/scripts/egress/wall-check.sh "<item.domain>" "<route_domain>"` (the single source of truth for the wall rule, same call `export-tasks` step 4 makes). If it exits non-zero (a hard wall crossing), append a `WARNING:` line per offending item using the script's stderr reason. Soft `WARNING:` lines the script prints on stdout (exit 0) pass through as-is. This is preview only: the script result never blocks the plan, never authorizes writes, and this table never stops the run. `export-tasks` still runs its own dry-run and wall check before any write; this table does not authorize writes.
 
 **Single-branch fast path:** If exactly one branch has eligible items, print the plan and proceed directly to step 4 without waiting for confirmation. No ordering decision exists. Print `Auto-proceeding (only one branch eligible).` and continue in the same turn.
 

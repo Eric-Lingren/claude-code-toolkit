@@ -137,9 +137,10 @@
       "name": "export-tasks-github",
       "file": "agents/egress/github/export-tasks-github.md",
       "model": "haiku",
-      "description": "GitHub Issues write adapter. Creates a single GitHub issue from structured JSON input. Spawned by the export-tasks coordinator per gh-issues item. Returns the created issue URL as the sole response line.",
+      "description": "GitHub Issues write adapter. Creates a single GitHub issue from structured JSON input. Spawned by the export-tasks coordinator per gh-issues item and by the capture skill. Accepts optional comma-separated labels (default triage). Returns the created issue URL as the sole response line.",
       "consumers": [
-        "export-tasks"
+        "export-tasks",
+        "capture"
       ]
     },
     {
@@ -191,6 +192,13 @@
         "to-seed",
         "to-tasks"
       ]
+    },
+    {
+      "name": "capture-idea",
+      "file": "agents/learning/capture-idea.md",
+      "model": "sonnet",
+      "description": "Background idea-capture agent. Finds ideas and fixes mentioned in passing in a finished session, dedupes against filed and pending captures, and queues survivors in capture-pending via pending.sh. Never files. Corporate-source candidates are sealed. Spawned by the learning-capture tail block and the SessionEnd hook.",
+      "consumers": []
     },
     {
       "name": "answer-composer",

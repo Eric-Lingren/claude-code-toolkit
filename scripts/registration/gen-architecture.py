@@ -39,7 +39,7 @@ SKILL_GROUPS = {
     "UTILITY": [
         "find-work", "clean-scaffolding", "handoff", "offload",
         "how-to", "tldr-tech", "worktree", "cc-usage-analytics",
-        "run-task-followups",
+        "run-task-followups", "capture",
     ],
 }
 
@@ -61,7 +61,7 @@ AGENT_GROUPS = {
     ],
     "IMPROVE": ["architecture-auditor"],
     "LEARN": [
-        "capture-learning",
+        "capture-learning", "capture-idea",
         "attribution-tracer", "artifact-grounding-judge",
     ],
 }

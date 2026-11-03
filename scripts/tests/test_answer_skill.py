@@ -18,7 +18,7 @@ import pytest
 DOTFILES = pathlib.Path(__file__).resolve().parents[3]
 SHARED = DOTFILES / "claude-code-shared"
 
-SKILL_PATH = SHARED / "skills" / "answer" / "SKILL.md"
+SKILL_PATH = SHARED / "skills" / "investigate" / "SKILL.md"
 MODEL_TIERS_PATH = SHARED / "resources" / "model-tiers.json"
 SKILL_PIPELINE_PATH = SHARED / "skill-pipeline.json"
 LEARNING_CONTRACT_PATH = SHARED / "contracts" / "learning-contract.md"
@@ -60,17 +60,17 @@ def _extract_body(skill_text: str) -> str:
 
 
 def test_answer_skill_exists():
-    """skills/answer/SKILL.md must exist."""
+    """skills/investigate/SKILL.md must exist."""
     assert SKILL_PATH.exists(), (
         f"Missing: {SKILL_PATH}\n"
-        "The answer skill must live at skills/answer/SKILL.md."
+        "The standalone answer skill was folded into skills/investigate/SKILL.md (--out slack)."
     )
 
 
 def test_answer_skill_has_name_field(skill_text):
-    """Frontmatter must declare name: answer."""
-    assert "name: answer" in skill_text, (
-        "SKILL.md frontmatter is missing 'name: answer'."
+    """Frontmatter must declare name: investigate (the answer doorway lives there now)."""
+    assert "name: investigate" in skill_text, (
+        "SKILL.md frontmatter is missing 'name: investigate'."
     )
 
 
@@ -100,18 +100,18 @@ def test_answer_skill_has_low_effort(skill_text):
 
 
 def test_model_tiers_has_answer(model_tiers):
-    """model-tiers.json must include the answer skill."""
+    """model-tiers.json must include the investigate skill (which absorbed answer)."""
     skills = model_tiers.get("skills", {})
-    assert "answer" in skills, (
-        f"'answer' not found in model-tiers.json skills map. Keys: {list(skills.keys())}"
+    assert "investigate" in skills, (
+        f"'investigate' not found in model-tiers.json skills map. Keys: {list(skills.keys())}"
     )
 
 
 def test_model_tiers_answer_is_t1(model_tiers):
     """model-tiers.json must assign answer to T1 (Haiku tier)."""
-    tier = model_tiers.get("skills", {}).get("answer")
+    tier = model_tiers.get("skills", {}).get("investigate")
     assert tier == "T1", (
-        f"model-tiers.json has 'answer': '{tier}', expected 'T1'. "
+        f"model-tiers.json has 'investigate': '{tier}', expected 'T1'. "
         "The answer skill is a pure delegation doorway and belongs at Haiku tier."
     )
 
@@ -122,10 +122,10 @@ def test_model_tiers_answer_is_t1(model_tiers):
 
 
 def test_skill_pipeline_has_answer(skill_pipeline):
-    """skill-pipeline.json must include 'answer' as a registered skill."""
+    """skill-pipeline.json must include 'investigate' as a registered skill."""
     skills = skill_pipeline.get("skills", {})
-    assert "answer" in skills, (
-        f"'answer' not found in skill-pipeline.json. "
+    assert "investigate" in skills, (
+        f"'investigate' not found in skill-pipeline.json. "
         f"Registered skills: {list(skills.keys())}"
     )
 
@@ -184,9 +184,9 @@ def test_answer_skill_has_no_verdict_handling_logic(skill_text):
     """
     body = _extract_body(skill_text)
     bad_patterns = [
-        "if.*verified_true",
-        "if.*insufficient_evidence",
-        "if.*verified_false",
+        r"\bif\b.*verified_true",
+        r"\bif\b.*insufficient_evidence",
+        r"\bif\b.*verified_false",
         "when.*verdict",
         "switch.*verdict",
     ]
@@ -253,9 +253,9 @@ def test_answer_skill_has_learning_capture_tail(skill_text):
 
 
 def test_answer_skill_tail_has_correct_slug(skill_text):
-    """Learning-capture tail block must use slug 'answer'."""
-    assert "skill-done: answer" in skill_text, (
-        "Learning-capture tail block has wrong skill slug. Expected 'skill-done: answer'."
+    """Learning-capture tail block must use slug 'investigate'."""
+    assert "skill-done: investigate" in skill_text, (
+        "Learning-capture tail block has wrong skill slug. Expected 'skill-done: investigate'."
     )
 
 
@@ -265,8 +265,8 @@ def test_answer_skill_tail_has_correct_slug(skill_text):
 
 
 def test_learning_contract_has_answer_skill(learning_contract):
-    """learning-contract.md producers list must include skills/answer/."""
-    assert "skills/answer/" in learning_contract, (
-        "'skills/answer/' not found in learning-contract.md producers list. "
-        "Add '- `skills/answer/`' in alphabetical order (before skills/build-code/)."
+    """learning-contract.md producers list must include skills/investigate/."""
+    assert "skills/investigate/" in learning_contract, (
+        "'skills/investigate/' not found in learning-contract.md producers list. "
+        "Add '- `skills/investigate/`' in alphabetical order."
     )

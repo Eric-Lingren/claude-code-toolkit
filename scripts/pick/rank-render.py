@@ -10,6 +10,7 @@ Sort steps come from the bucket's `sort` array:
   hide-blocked  drop candidates that have any blocker
   label-tier    order by label priority (LABEL_TIER, lower first)
   smallest      points ascending (unpointed last)
+  seen-again    count of 'seen again:' comments, most first (none last)
 Ties break oldest first. Render: top N (default 5) in two sections, 'ready'
 (no open blockers) then 'waiting on blockers' (blocker PR in review, not merged;
 each item lists its open blockers). Numbering runs across both sections. One
@@ -50,6 +51,8 @@ def rank(doc):
         k = [c.get("_tier", 0)]
         if "label-tier" in sort:
             k.append(label_tier(c))
+        if "seen-again" in sort:
+            k.append(-(c.get("seen_again") or 0))
         k.append(stack_pref.penalty(c))
         if "smallest" in sort:
             p = c.get("points")
@@ -110,6 +113,9 @@ def render(doc, top=5, scores=None):
         for note in c.get("notes", []):
             lines.append(f"   {note}")
         base = f" {c['_base']}" if c.get("_base") else ""
+        if doc.get("start") == "grill-me":  # no worktree: grill the idea first
+            lines.append(f"   start: /grill-me {c['id']}")
+            continue
         lines.append(f"   start: wt {c['branch']}{base}  ->  /grill-me {c['id']}")
     if doc.get("_hidden"):
         lines += ["", f"{doc['_hidden']} blocked hidden"]

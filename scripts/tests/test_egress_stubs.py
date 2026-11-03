@@ -21,11 +21,13 @@ EGRESS_DIR = SHARED / "agents" / "egress"
 SCHEMA_PATH = SHARED / "contracts" / "egress-result-schema.json"
 
 CHANNEL_DIRS = ["github", "linear", "notion", "slack"]
+# post-github is a live adapter (posts via gh api), no longer a copy-only stub.
+LIVE_FILES = {"github": "post-github.md"}
 STUB_FILES = {
-    "github": "post-github.md",
     "linear": "post-linear.md",
     "slack": "post-slack.md",
 }
+ALL_ADAPTER_FILES = {**LIVE_FILES, **STUB_FILES}
 
 
 @pytest.fixture(scope="module")
@@ -50,7 +52,7 @@ def test_channel_directory_exists(channel):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("channel,filename", STUB_FILES.items())
+@pytest.mark.parametrize("channel,filename", ALL_ADAPTER_FILES.items())
 def test_stub_file_exists(channel, filename):
     stub = EGRESS_DIR / channel / filename
     assert stub.exists(), f"Missing stub file: {stub}"
@@ -109,3 +111,25 @@ def test_stub_example_is_schema_valid_copy_only(channel, filename, schema):
     assert result.get("url") is None, (
         f"{filename}: example egress-result url must be null for copy-only"
     )
+
+
+# ---------------------------------------------------------------------------
+# Live adapter (post-github) is not a copy-only stub
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("channel,filename", LIVE_FILES.items())
+def test_live_adapter_posts_via_gh_api_and_is_not_a_stub(channel, filename):
+    text = (EGRESS_DIR / channel / filename).read_text()
+    assert "gh api" in text
+    assert "<!-- STUB:" not in text
+    assert "NO EXTERNAL CALLS MADE" not in text
+
+
+@pytest.mark.parametrize("channel,filename", LIVE_FILES.items())
+def test_live_adapter_example_is_schema_valid_posted(channel, filename, schema):
+    text = (EGRESS_DIR / channel / filename).read_text()
+    result = _extract_json_block(text)
+    jsonschema.validate(result, schema)
+    assert result["status"] == "posted"
+    assert result["posted"] is True

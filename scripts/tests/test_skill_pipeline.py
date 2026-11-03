@@ -113,8 +113,12 @@ class TestKnownEdges:
         targets = [e["skill"] for e in pipeline["skills"]["pr-revise"]["next"]]
         assert "to-tasks" in targets
 
+    def test_pr_code_review_leads_to_dispatch_tasks(self, pipeline):
+        targets = [e["skill"] for e in pipeline["skills"]["pr-code-review"]["next"]]
+        assert "dispatch-tasks" in targets
+
     def test_terminal_skills_have_empty_next(self, pipeline):
-        terminal = ["pr-code-review", "improve-skill-benchmarks", "tdd", "handoff"]
+        terminal = ["improve-skill-benchmarks", "tdd", "handoff"]
         for slug in terminal:
             entry = pipeline["skills"][slug]
             assert entry["next"] == [], f"{slug}: expected empty next, got {entry['next']}"

@@ -10,6 +10,7 @@ All 30 shared skills. Plugin skills (caveman, chrome-devtools) are excluded.
 
 - `skills/build-code/`
 - `skills/cc-usage-analytics/`
+- `skills/capture/`
 - `skills/ci-fix/`
 - `skills/clean-scaffolding/`
 - `skills/pr-code-review/`

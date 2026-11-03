@@ -30,6 +30,28 @@ Prompt fields:
 Supplying `anchors` is the main speed lever. With them, the agent skips
 searching the transcript entirely.
 
+## 2b. Spawn `capture-idea` in the background
+
+In the same tool-call batch as step 2, spawn a second agent: `subagent_type:
+capture-idea`, `run_in_background: true`. Prompt fields: `transcript_path`
+(from step 1), `session` (current branch or session id), `cwd` (current
+directory). Never wait for it. It only queues candidates in capture-pending
+and never files anything. Corporate-source candidates are sealed by the agent.
+
+At skill end, after the closing suggestion and before the final marker lines,
+print the compact pending list as plain text, then the reply grammar. Skip
+both if the list is empty. Ignoring it never blocks.
+
+```bash
+bash ~/.dotfiles/claude-code-shared/scripts/capture/pending.sh list
+```
+
+```
+Pending captures (say "capture review" to act):
+<list output>
+Reply: y (file all) | 1,3 (file those, drop rest) | n (drop all) | e2 <change> | ?2
+```
+
 ## 3. Print the closing message
 
 Print the skill's closing suggestion (the next-step list from the skill stub).

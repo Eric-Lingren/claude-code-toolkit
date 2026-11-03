@@ -73,6 +73,10 @@ Exit 0 = valid. Non-zero = STOP, report stderr, do not proceed.
 - [seed-contract.md](seed-contract.md) + [seed-schema.json](seed-schema.json)
 - [runner-result-contract.md](runner-result-contract.md) + [runner-result-schema.json](runner-result-schema.json)
 
+### Capture
+
+- [capture-issue-contract.md](capture-issue-contract.md) + [capture-issue-schema.json](capture-issue-schema.json) — captured idea or fix: validated and rendered into a four-section GitHub issue body by `scripts/capture/validate-capture.py`
+
 ### Verification I/O (to-seed adversary panel)
 
 - [refutation-contract.md](refutation-contract.md) + [refutation-schema.json](refutation-schema.json) — persona output: array of refutation objects or error-form

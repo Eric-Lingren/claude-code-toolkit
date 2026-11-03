@@ -4,7 +4,7 @@ import pathlib
 import pytest
 
 SHARED = pathlib.Path(__file__).resolve().parents[3] / "claude-code-shared"
-AGENT_FILE = SHARED / "agents" / "attribution-tracer.md"
+AGENT_FILE = SHARED / "agents" / "learning" / "attribution-tracer.md"
 
 
 @pytest.fixture(scope="module")

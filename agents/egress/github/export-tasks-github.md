@@ -1,6 +1,6 @@
 ---
 name: export-tasks-github
-description: GitHub Issues write adapter. Creates a single GitHub issue from structured JSON input. Spawned by the export-tasks coordinator per gh-issues item. Returns the created issue URL as the sole response line.
+description: GitHub Issues write adapter. Creates a single GitHub issue from structured JSON input. Spawned by the export-tasks coordinator per gh-issues item and by the capture skill. Accepts optional comma-separated labels (default triage). Returns the created issue URL as the sole response line.
 tools: Bash
 model: haiku
 ---
@@ -19,11 +19,12 @@ Prompt is a JSON object:
 {
   "title": "string",
   "description": "string",
-  "org_repo": "Org/Repo"
+  "org_repo": "Org/Repo",
+  "labels": "idea"
 }
 ```
 
-All fields required. Non-empty strings.
+`title`, `description`, `org_repo` are required non-empty strings. `labels` is optional: a comma-separated string (e.g. `"feature-request,triage"`). When absent or empty it defaults to `triage`, and it is passed through to the script unchanged.
 
 ### Output
 
@@ -45,21 +46,22 @@ No other text. No markdown. No explanation.
 
 Companion script: `~/.dotfiles/claude-code-shared/scripts/egress/github-issue.sh`
 
-Args: `<title> <body> <org/repo>`
+Args: `<title> <body> <org/repo> [labels]` (labels defaults to `triage`)
 Stdout: issue URL
 Stderr: error message on failure
 
 ## Process
 
 1. Parse input JSON from the prompt.
-2. Validate all three fields are non-empty strings. If any missing or empty: respond `ERROR: missing field <name>` and stop.
+2. Validate `title`, `description`, `org_repo` are non-empty strings. If any missing or empty: respond `ERROR: missing field <name>` and stop. Set `LABELS` to the `labels` field, or `triage` if absent or empty.
 3. Run:
 
 ```bash
 bash ~/.dotfiles/claude-code-shared/scripts/egress/github-issue.sh \
   "$TITLE" \
   "$DESCRIPTION" \
-  "$ORG_REPO"
+  "$ORG_REPO" \
+  "$LABELS"
 ```
 
 4. Capture stdout as the issue URL.

@@ -126,7 +126,7 @@ def branch_prefix(b):
 # When registering a new skill, add it to the matching CMD set here.
 # See register-skill step 2h.
 PLAN_CMDS   = {"to-spec", "to-prd", "grill-me", "grill-with-docs", "to-tasks",
-               "prototype", "plan", "sprout-seed", "to-seed", "find-work", "pick"}
+               "prototype", "plan", "sprout-seed", "to-seed", "find-work", "pick", "capture"}
 TEST_CMDS   = {"tdd", "to-e2e-tests"}
 REVIEW_CMDS = {"review", "code-review", "pr-code-review", "security-review",
                "caveman-review", "relay", "pr-revise", "frontend-review"}

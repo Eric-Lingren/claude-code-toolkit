@@ -147,7 +147,7 @@ for n in data["issues"]["nodes"]:
         "parent": (n.get("parent") or {}).get("identifier"),
         "project": (n.get("project") or {}).get("name"),
         "blockers": blockers, "prs": prs(n.get("attachments")),
-        "branch": n["branchName"], "created_at": n.get("createdAt"),
+        "branch": n["branchName"], "created_at": n.get("createdAt"), "seen_again": 0,
     })
 print(json.dumps({"repo": repo, "bucket": bucket, "sort": cfg.get("sort", []),
                   "focus": bool(cfg.get("focus")), "candidates": out}, indent=2))

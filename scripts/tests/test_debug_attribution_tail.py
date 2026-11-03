@@ -20,32 +20,37 @@ class TestAttributionBlockPresent:
         assert "<!-- attribution-capture:end -->" in content
 
 
-class TestAttributionBlockContent:
-    def test_references_attribution_tracer(self, content):
-        assert "attribution-tracer" in content
+RESOURCE_FILE = SHARED / "resources" / "attribution-capture.md"
 
-    def test_references_artifact_grounding_judge(self, content):
-        assert "artifact-grounding-judge" in content
+
+@pytest.fixture(scope="module")
+def resource():
+    return RESOURCE_FILE.read_text()
+
+
+class TestAttributionBlockContent:
+    """The skill block only points at the shared resource; the instructions live there."""
+
+    def test_block_references_shared_resource(self, content):
+        start = content.find("<!-- attribution-capture:start -->")
+        end = content.find("<!-- attribution-capture:end -->")
+        assert "resources/attribution-capture.md" in content[start:end]
+
+    def test_references_attribution_tracer(self, resource):
+        assert "attribution-tracer" in resource
+
+    def test_references_artifact_grounding_judge(self, resource):
+        assert "artifact-grounding-judge" in resource
 
     def test_fires_per_confirmed_root_cause(self, content):
         lower = content.lower()
         assert "root cause" in lower or "confirmed" in lower
 
-    def test_says_before_closing_suggestion(self, content):
-        # Extract attribution block
-        start = content.find("<!-- attribution-capture:start -->")
-        end = content.find("<!-- attribution-capture:end -->")
-        if start == -1 or end == -1:
-            pytest.fail("Attribution block not found")
-        block = content[start:end]
-        lower = block.lower()
-        assert "before" in lower
+    def test_says_before_closing_suggestion(self, resource):
+        assert "before" in resource.lower()
 
-    def test_collects_repo_pointers(self, content):
-        start = content.find("<!-- attribution-capture:start -->")
-        end = content.find("<!-- attribution-capture:end -->")
-        block = content[start:end + len("<!-- attribution-capture:end -->")]
-        assert "transcript" in block.lower()
+    def test_collects_repo_pointers(self, resource):
+        assert "transcript" in resource.lower()
 
 
 class TestNoMarkerDuplication:
@@ -53,9 +58,10 @@ class TestNoMarkerDuplication:
         count = content.count("<!-- skill-done: debug -->")
         assert count == 1, f"skill-done: debug appears {count} times (expected 1)"
 
-    def test_learning_eval_marker_appears_exactly_once(self, content):
-        count = content.count("<!-- learning-eval: debug -->")
-        assert count == 1, f"learning-eval: debug appears {count} times (expected 1)"
+    def test_learning_eval_marker_defined_once_in_shared_resource(self):
+        # The marker is printed at run time per the shared resource, not baked into the skill.
+        text = (SHARED / "resources" / "learning-capture.md").read_text()
+        assert text.count("<!-- learning-eval: <slug> -->") == 1
 
 
 class TestBlockIsAdditive:

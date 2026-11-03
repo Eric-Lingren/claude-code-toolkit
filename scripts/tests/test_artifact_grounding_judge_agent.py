@@ -4,7 +4,7 @@ import pathlib
 import pytest
 
 SHARED = pathlib.Path(__file__).resolve().parents[3] / "claude-code-shared"
-AGENT_FILE = SHARED / "agents" / "artifact-grounding-judge.md"
+AGENT_FILE = SHARED / "agents" / "learning" / "artifact-grounding-judge.md"
 
 
 @pytest.fixture(scope="module")

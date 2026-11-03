@@ -35,6 +35,19 @@ the current model. Delegate only the menial searching.
 
 Every mode produces the same task file. The mode only decides what happens after.
 
+### Headless mode (review-watcher worker)
+
+Entered when args contain `--headless <run-dir>` or the environment has `REVIEW_WORKER=1` (the run directory is then the one named in the prompt). Used by `scripts/review-watcher/run-review.sh`. The worker is read-only: it never posts, never asks, never hands off.
+
+In headless mode:
+- Never call `AskUserQuestion`. Never run Step 5 (no task file, no `next-task-id.sh`, no `docs/tasks/` write) and never run Step 6 or the new-session handoff block.
+- Never run `post-pr-review.py`, `gh pr review`, `gh pr comment`, `gh api` writes, or any other command that writes to GitHub. `post-pr-review.py` refuses under `REVIEW_WORKER=1`.
+- Steps 1 to 4 run unchanged (diff, dimension agents, line validation, dedup, investigator gate).
+- After the investigator gate, write exactly two files, only inside `<run-dir>` (Write to `<run-dir>` is the only permitted write):
+  - `<run-dir>/findings.json`: a JSON array of `{"file", "line", "body"}` objects, the input shape of `scripts/egress/post-pr-review.py`. `body` is the full comment text in the Step 1a voice. Use `[]` for a zero-finding review.
+  - `<run-dir>/summary.md`: the Output format findings block (emoji summary line, per-file findings, Verdict).
+- Then stop. Print one line, `headless review complete`, and nothing else. The runner records the session id and posts nothing.
+
 ---
 
 You are performing a thorough code review. Follow this process exactly.
@@ -355,6 +368,8 @@ Pure style/naming `nit` findings that make no factual claim about runtime behavi
 
 ## Step 5: Write task file
 
+**Headless mode:** skip this step entirely (see Contract > Headless mode).
+
 After the investigator gate, write all verified findings to a task file with `task_type: "review_finding"` entries.
 
 **ID assignment:** Call `next-task-id.sh` once to get the first available ID, then increment numerically for each additional finding:
@@ -441,6 +456,8 @@ Write nothing that doesn't belong in a comment thread. No preamble, no "Overall 
 **The findings block is mandatory and verbatim.** Render it after Step 5 writes the task file, as the last text before Step 6. Never replace it with a prose summary, even for a single finding or a zero-finding review. Progress notes printed while waiting on investigators do not count as the findings block.
 
 ## Step 6: Route based on review_mode
+
+**Headless mode:** skip this step and the handoff block (see Contract > Headless mode).
 
 **Gate:** the full findings block from Output format (emoji summary line, per-file findings, Verdict) must already be printed in this turn. If it is not, print it now. Do not call `AskUserQuestion` until it is on screen. The user decides from that block.
 

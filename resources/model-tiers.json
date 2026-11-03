@@ -11,6 +11,11 @@
       "effort": "medium",
       "_meaning": "Mechanical. Narrow, well-defined scope."
     },
+    "T2L": {
+      "model": "sonnet",
+      "effort": "low",
+      "_meaning": "Mechanical, low effort. Short interactive flows that build and file a small artifact (capture)."
+    },
     "T3": {
       "model": "sonnet",
       "effort": "high",
@@ -59,7 +64,8 @@
     "ci-fix": "T3",
     "standup": "T2",
     "retro": "T2",
-    "pick": "T1"
+    "pick": "T1",
+    "capture": "T2L"
   },
   "agents": {
     "architecture-auditor": "T3",
@@ -77,7 +83,13 @@
     "export-tasks": "T2",
     "build-runner": "T3",
     "visual-judge": "T2",
-    "pick-scorer": "T2"
+    "pick-scorer": "T2",
+    "capture-idea": "T2",
+    "export-tasks-github": "T1"
+  },
+  "sessions": {
+    "_doc": "Interactive sessions launched outside a skill, tiered the same way (tier -> model+effort). Not stamped into any file; the launcher passes the flags. Keep launcher and this map in step.",
+    "capture-hotkey": "T1"
   },
   "delegate": [
     "build-code",

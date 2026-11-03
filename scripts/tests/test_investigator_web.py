@@ -72,27 +72,21 @@ def test_investigator_web_uses_web_search_tools(agent_text):
 # ---------------------------------------------------------------------------
 
 
-def test_fact_check_skill_exists_as_redirect_stub():
-    """SKILL.md must still exist (as a redirect stub, not deleted)."""
-    assert FACT_CHECK_SKILL_PATH.exists(), (
-        f"fact-check SKILL.md missing entirely — should exist as redirect stub: {FACT_CHECK_SKILL_PATH}"
+def test_fact_check_skill_is_fully_retired():
+    """The redirect stub was later removed outright; the skill dir must stay gone."""
+    assert not FACT_CHECK_SKILL_PATH.parent.exists(), (
+        f"Retired fact-check skill reappeared: {FACT_CHECK_SKILL_PATH.parent}"
     )
 
 
-def test_fact_check_skill_does_not_spawn_old_agent():
-    """Retired skill must not contain spawn logic for the old fact-checker agent."""
-    text = FACT_CHECK_SKILL_PATH.read_text()
-    assert "subagent_type: fact-checker" not in text, (
-        "Retired skill still spawns the old fact-checker agent — must be removed"
-    )
+def test_fact_checker_agent_is_gone():
+    """Retired skill must not leave the old fact-checker agent behind."""
+    assert not list((SHARED / "agents").rglob("fact-checker.md"))
 
 
-def test_fact_check_skill_redirects_to_investigate():
-    """Retired stub must mention /investigate as the replacement."""
-    text = FACT_CHECK_SKILL_PATH.read_text()
-    assert "investigate" in text.lower(), (
-        "Retired fact-check skill must redirect users to /investigate"
-    )
+def test_investigate_skill_replaces_fact_check():
+    """/investigate is the replacement and must exist."""
+    assert (SHARED / "skills" / "investigate" / "SKILL.md").exists()
 
 
 # ---------------------------------------------------------------------------
