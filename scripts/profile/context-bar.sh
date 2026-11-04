@@ -241,21 +241,33 @@ if [[ -n "$sd_pct" && "$sd_pct" != "null" ]]; then
 fi
 
 # Get caveman mode badge
+# Plugin >= 4.0 stores mode per session in .caveman-sessions/<session_id>.mode
+# and deletes the legacy .caveman-active flag. Read the session file first,
+# fall back to the legacy flag for older plugin versions.
 caveman_badge=""
-CAVEMAN_FLAG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.caveman-active"
+CAVEMAN_CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CAVEMAN_SID=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
+case "$CAVEMAN_SID" in
+  ''|*[!A-Za-z0-9_-]*) CAVEMAN_SID="" ;;
+esac
+[ "${#CAVEMAN_SID}" -gt 128 ] && CAVEMAN_SID=""
+CAVEMAN_FLAG="$CAVEMAN_CFG/.caveman-active"
+if [ -n "$CAVEMAN_SID" ] && [ -f "$CAVEMAN_CFG/.caveman-sessions/$CAVEMAN_SID.mode" ]; then
+    CAVEMAN_FLAG="$CAVEMAN_CFG/.caveman-sessions/$CAVEMAN_SID.mode"
+fi
+CAVEMAN_BADGE_NAME=""
 if [ ! -L "$CAVEMAN_FLAG" ] && [ -f "$CAVEMAN_FLAG" ]; then
     CAVEMAN_MODE=$(head -c 64 "$CAVEMAN_FLAG" 2>/dev/null | tr -d '\n\r' | tr '[:upper:]' '[:lower:]')
     CAVEMAN_MODE=$(printf '%s' "$CAVEMAN_MODE" | tr -cd 'a-z0-9-')
     case "$CAVEMAN_MODE" in
-      off|lite|full|ultra|wenyan-lite|wenyan|wenyan-full|wenyan-ultra|commit|review|compress)
-        if [ "$CAVEMAN_MODE" = "full" ]; then
-            caveman_badge="  |  \033[38;5;172m[CAVEMAN]\033[0m"
-        else
-            SUFFIX=$(printf '%s' "$CAVEMAN_MODE" | tr '[:lower:]' '[:upper:]')
-            caveman_badge="  |  \033[38;5;172m[CAVEMAN:${SUFFIX}]\033[0m"
-        fi
-        ;;
+      caveman|lite|full) CAVEMAN_BADGE_NAME="CAVEMAN" ;;
+      ultracave|ultra) CAVEMAN_BADGE_NAME="ULTRACAVE" ;;
+      megacave|wenyan|wenyan-lite|wenyan-full|wenyan-ultra) CAVEMAN_BADGE_NAME="MEGACAVE" ;;
+      commit|review|compress) CAVEMAN_BADGE_NAME="CAVEMAN:$(printf '%s' "$CAVEMAN_MODE" | tr '[:lower:]' '[:upper:]')" ;;
     esac
+fi
+if [ -n "$CAVEMAN_BADGE_NAME" ]; then
+    caveman_badge="  |  \033[38;5;172m[${CAVEMAN_BADGE_NAME}]\033[0m"
 else
     caveman_badge="  |  \033[38;5;196m[CAVEMAN:DISABLED]\033[0m"
 fi
