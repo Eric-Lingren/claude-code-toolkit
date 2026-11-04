@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "change-record-schema",
+  "title": "Change Record",
+  "description": "One record per merged change to claude-code-shared, written passively by scripts/attribution/write-change-records.py into attribution/change-records/<change_id>.json after the merge. Keyed by merged_sha. See change-record-contract.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "change_id",
+    "lane",
+    "source_refs",
+    "target_repo",
+    "touched_paths",
+    "sections",
+    "touched_units",
+    "kind",
+    "base_sha",
+    "merged_sha",
+    "merged_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Schema version. Must be '1'."
+    },
+    "change_id": {
+      "type": "string",
+      "pattern": "^chg-[0-9a-f]{12}$",
+      "description": "Stable id derived from merged_sha: 'chg-' plus its first 12 hex characters. Also the record's file name stem."
+    },
+    "lane": {
+      "type": "string",
+      "enum": ["seed", "learnings", "manual"],
+      "description": "How the change entered main. seed and learnings are the automated lanes; manual is a PR the user merged by hand."
+    },
+    "source_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Pointers back to where the change came from, e.g. 'pr:109', 'branch:feat/app-groups'. Seed and learnings lanes also carry their Learning-Ids in source_refs."
+    },
+    "target_repo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Org/Repo the change was merged into, taken from the origin remote when available."
+    },
+    "touched_paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Repo-relative paths under claude-code-shared/ that the merge changed, sorted."
+    },
+    "sections": {
+      "type": "array",
+      "description": "Markdown sections the merge's diff hunks fall under, sorted by path then section.",
+      "items": {
+        "type": "object",
+        "required": ["path", "section"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "section": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The full heading line, e.g. '## Instrument'. '(preamble)' for lines before the first heading."
+          }
+        }
+      }
+    },
+    "touched_units": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(skill|agent|contract|hook|script):.+$"
+      },
+      "description": "Units derived from paths, e.g. 'skill:debug', 'agent:build-runner', 'script:learning/log-learning.py'. Sorted, unique."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["skill", "agent", "contract", "script", "hook", "config"],
+      "description": "Primary kind of the change. When a merge touches several kinds the first of skill, agent, contract, hook, script wins. config is reserved: config-only merges get no record."
+    },
+    "base_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "First parent of the merge commit: main as it stood before the merge."
+    },
+    "merged_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "The merge commit on main. The idempotency key."
+    },
+    "merged_at": {
+      "type": "string",
+      "description": "Committer date of the merge commit, ISO 8601 with offset."
+    },
+    "ci_snapshot": {
+      "description": "Optional, informational, manual-lane records only. The CI per-test-file base-vs-head snapshot from the Test snapshot workflow's test-snapshot artifact for the merged PR's head sha. null when no artifact was available, gh failed or the machine was offline. Absent on seed and learnings lane records.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["run_id", "head_sha", "base", "head", "diff"],
+          "additionalProperties": false,
+          "properties": {
+            "run_id": { "type": "integer", "description": "Workflow run the artifact came from." },
+            "head_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "PR head sha the run was looked up by." },
+            "base": { "$ref": "#/definitions/test_results", "description": "base.json from the artifact: run-all-tests JSON for the PR base ({results, totals})." },
+            "head": { "$ref": "#/definitions/test_results", "description": "head.json from the artifact: run-all-tests JSON for the PR head." },
+            "diff": {
+              "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/snapshot_diff" }],
+              "description": "diff.json from the artifact (ci-snapshot-diff.py output); null when the artifact lacked it or it failed validation."
+            }
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "test_results": {
+      "type": "object",
+      "required": ["results"],
+      "additionalProperties": false,
+      "properties": {
+        "results": {
+          "type": "object",
+          "maxProperties": 5000,
+          "additionalProperties": { "type": "string", "enum": ["pass", "fail"] }
+        },
+        "totals": {
+          "type": "object",
+          "maxProperties": 20,
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "snapshot_diff": {
+      "type": "object",
+      "maxProperties": 20,
+      "properties": {
+        "newly_failing": { "type": "array", "maxItems": 5000, "items": { "type": "string" } },
+        "newly_passing": { "type": "array", "maxItems": 5000, "items": { "type": "string" } },
+        "unchanged": { "type": "array", "maxItems": 5000, "items": { "type": "string" } },
+        "added": { "$ref": "#/definitions/file_status_list" },
+        "removed": { "$ref": "#/definitions/file_status_list" },
+        "totals": { "type": "object", "maxProperties": 20, "additionalProperties": { "type": "integer" } }
+      },
+      "additionalProperties": { "type": ["boolean", "integer", "number", "string", "null"] }
+    },
+    "file_status_list": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "required": ["file", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "status": { "type": "string", "enum": ["pass", "fail"] }
+        }
+      }
+    }
+  }
+}

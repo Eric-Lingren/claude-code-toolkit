@@ -2,7 +2,7 @@
 """
 gen-agents-readme.py -- Regenerate agents/README.md from agents/registry.json.
 
-Lists every registered agent grouped by lane (first folder under agents/),
+Lists every registered agent organized into groups (first folder under agents/),
 with model and consumers. Output is deterministic (sorted, no timestamps).
 
 Usage:
@@ -19,30 +19,30 @@ REGISTRY = BASE / "agents" / "registry.json"
 OUT_DEFAULT = BASE / "agents" / "README.md"
 
 
-def lane_of(file_path: str) -> str:
+def group_of(file_path: str) -> str:
     parts = file_path.split("/")
     return parts[1] if len(parts) > 2 else "(root)"
 
 
 def render(agents: list) -> str:
-    lanes = {}
+    groups = {}
     for a in agents:
-        lanes.setdefault(lane_of(a["file"]), []).append(a)
+        groups.setdefault(group_of(a["file"]), []).append(a)
 
     lines = [
         "# Agents",
         "",
         "Generated from `registry.json` by `scripts/registration/gen-agents-readme.py`. Do not edit by hand.",
         "",
-        f"{len(agents)} agents across {len(lanes)} lanes.",
+        f"{len(agents)} agents across {len(groups)} groups.",
         "",
         "Skill-agents run the same-named skill in an isolated context window.",
         "",
     ]
-    for lane in sorted(lanes):
-        members = sorted(lanes[lane], key=lambda a: a["name"])
+    for group in sorted(groups):
+        members = sorted(groups[group], key=lambda a: a["name"])
         lines += [
-            f"## {lane}",
+            f"## {group}",
             "",
             "| Agent | Model | Consumers |",
             "|---|---|---|",

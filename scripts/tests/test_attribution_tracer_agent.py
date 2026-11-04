@@ -92,3 +92,30 @@ class TestDemoteOnDoubt:
 
     def test_improves_null_when_uncertain(self, content):
         assert "null" in content
+
+
+class TestEscapePointProposal:
+    """The tracer proposes escape_point {path, section} alongside improves."""
+
+    def test_instructs_emitting_escape_point(self, content):
+        assert "escape_point" in content
+
+    def test_escape_point_has_path_and_section(self, content):
+        assert '"path"' in content
+        assert '"section"' in content
+
+    def test_escape_point_emitted_alongside_improves(self, content):
+        step2 = content.split("## Step 2")[1].split("## Step 3")[0]
+        assert "escape_point" in step2
+        assert "improves" in step2
+
+    def test_null_section_allowed(self, content):
+        step2 = content.split("## Step 2")[1].split("## Step 3")[0]
+        assert "section" in step2 and "null" in step2
+
+    def test_names_nearest_heading_from_provenance_walk(self, content):
+        assert "heading" in content.lower()
+
+    def test_log_learning_validates_proposal(self, content):
+        assert "log-learning.py" in content
+        assert "validates" in content.lower() or "validated" in content.lower()

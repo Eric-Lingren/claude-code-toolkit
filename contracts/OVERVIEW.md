@@ -72,6 +72,7 @@ Exit 0 = valid. Non-zero = STOP, report stderr, do not proceed.
 - [task-contract.md](task-contract.md) + [task-schema.json](task-schema.json)
 - [seed-contract.md](seed-contract.md) + [seed-schema.json](seed-schema.json)
 - [runner-result-contract.md](runner-result-contract.md) + [runner-result-schema.json](runner-result-schema.json)
+- [change-record-contract.md](change-record-contract.md) + [change-record-schema.json](change-record-schema.json) — one record per merged change, written to `attribution/change-records/` by `scripts/attribution/write-change-records.py`
 
 ### Capture
 

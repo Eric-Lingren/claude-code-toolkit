@@ -46,6 +46,20 @@ enforce or automate them.
   context-aware build), T4 = opus/xhigh (deep reasoning). `scripts/registration/sync-model-tiers.py`
   is the only thing that should propagate tier changes into skill/agent frontmatter.
 
+## Self-improvement loop glossary
+
+- **Seed bank**: the holding area for grilled, approved seeds waiting for the dispatcher
+  to pick them up. It holds work to do, and nothing else.
+  _Avoid_: bank (alone), which reads as the whole loop.
+- **Change record**: a committed log entry for one change merged to main. It says what
+  changed, when, and how it got there. It describes finished work, so it is not a seed
+  and never lives in the **Seed bank**.
+- **Attribution spine**: the records and detectors that tie a regression back to the
+  change that caused it. **Change records** are part of it.
+- **Lane**: the route a change took into main: `manual`, `seed` or `learnings`. Every
+  **Change record** names one.
+  _Avoid_: lane for agent folders. Those are groups.
+
 ## Browser verification glossary
 
 - **Baseline** — the "before" render of a route, captured by replaying the same

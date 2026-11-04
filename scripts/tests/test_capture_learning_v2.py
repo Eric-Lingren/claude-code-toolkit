@@ -64,6 +64,25 @@ class TestWritesUnifiedLog:
         assert "/<skill>" not in content
 
 
+class TestEscapePointField:
+    def test_documents_optional_escape_point(self, content):
+        assert "escape_point" in content
+
+    def test_escape_point_shape_documented(self, content):
+        assert '"path"' in content
+        assert '"section"' in content
+
+    def test_escape_point_marked_optional(self, content):
+        idx = content.index("escape_point")
+        window = content[max(0, idx - 400): idx + 800].lower()
+        assert "optional" in window
+
+    def test_section_may_be_null(self, content):
+        idx = content.index("escape_point")
+        window = content[idx: idx + 1200]
+        assert "null" in window
+
+
 class TestGrounding:
     def test_grounds_via_verify_anchors_script(self, content):
         assert "verify-anchors.py" in content

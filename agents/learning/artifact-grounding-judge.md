@@ -106,6 +106,33 @@ Do NOT call `log-learning.py`. Return:
 {"verdict": "rejected", "confidence": "<input>", "reason": "<specific rejection reason>"}
 ```
 
+## Regression check
+
+A second job, with its own input. It applies when your input has a `## Regression check input` section instead of a `## Draft attribution record`. log-learning.py spawns you for it after tag-attribution.py tagged a new learning `regression_of <change_id>`. The tag says the learning's escape point (a path and a section) sits inside a section that a recent change edited. You check that claim against the change's real diff, not against the change record's list of sections.
+
+The input is a JSON object with:
+- `learning`: `improves`, `cause`, `problem`, `why_missed`, `lesson`, `fix` and `escape_point` of the new learning
+- `attribution_tag`: `{"kind": "regression_of", "ref": "<change_id>"}`
+- `change_diff`: the output of `scripts/learning/load-change-diff.py` for the escape point: `section_diff` (only the hunks under the escape-point section, cut to a byte budget; `section_diff_truncated` is true when cut) and `section_edited`. The full-path `diff` is not sent
+
+Judge only from `change_diff`. Do not run git, `check-anchors.py` or any other command, and do not read other files.
+
+Decide in this order and stop at the first test that applies:
+1. **Section not edited → ungrounded.** `section_edited` is false or `section_diff` is empty.
+2. **Unrelated edit → ungrounded.** The hunks in `section_diff` are edits that cannot have produced the problem (whitespace, a typo elsewhere in the section, wording about a different step than the one the learning's `problem` and `why_missed` describe).
+3. **Related edit → grounded.** The change added, removed or reworded text in that section, and the problem the learning describes is about the behavior that text governs.
+
+Output the same single JSON object as above, using these values:
+
+```
+{"verdict": "pass"|"rejected", "confidence": "confirmed"|"candidate", "reason": "<one sentence>"}
+```
+
+- `verdict: pass` — the tag is grounded; the caller keeps it. `confidence` is `confirmed` when the diff plainly changes the behavior the learning describes, `candidate` when the link is plausible but indirect.
+- `verdict: rejected` — the tag is ungrounded; the caller downgrades it to `new_defect`. Name the missing or unrelated edit in `reason`.
+
+You only return the verdict. You never edit the tag or the learning: the downgrade to `new_defect` (the learning keeps its other fields, `ref` becomes null) is applied by log-learning.py. Do not call `log-learning.py` in this mode, whatever the verdict: the caller is already inside it and writes the row itself.
+
 ## What you must not do
 
 - Do not suggest edits to the draft record.

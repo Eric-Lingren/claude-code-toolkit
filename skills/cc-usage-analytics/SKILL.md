@@ -18,10 +18,11 @@ Benchmark (`scripts/usage/cc-usage-benchmark.py`):
 - Weekly model trend (mix + est cost): append `--trend`
 - Tier adherence (expected vs actual model per skill): append `--adherence`
 - Per-skill wall-clock latency + parallelism shape: append `--latency` (add `--min-n 3` to drop rare skills)
+- Median output tokens per skill per week (info only, never an alert): append `--tokens`
 
 Weekly report (`scripts/usage/weekly-usage-report.sh`):
 - Regenerate now: `bash ~/.dotfiles/claude-code-shared/scripts/usage/weekly-usage-report.sh`
-- Latest saved report: read the newest file in `~/.cache/cc-usage-reports/usage-*.txt`
+- Latest saved report: read the newest file in `~/.dotfiles/claude-code-shared/usage-reports/usage-*.txt`
 - Auto-runs Mondays 9am via launchd (`com.ericlingren.cc-usage-report`)
 
 ## How to respond

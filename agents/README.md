@@ -2,7 +2,7 @@
 
 Generated from `registry.json` by `scripts/registration/gen-agents-readme.py`. Do not edit by hand.
 
-33 agents across 7 lanes.
+35 agents across 8 groups.
 
 Skill-agents run the same-named skill in an isolated context window.
 
@@ -23,7 +23,7 @@ Skill-agents run the same-named skill in an isolated context window.
 |---|---|---|
 | [answer-composer](egress/answer-composer.md) | sonnet | - |
 | [export-tasks](egress/export-tasks.md) | sonnet | dispatch-tasks |
-| [export-tasks-github](egress/github/export-tasks-github.md) | haiku | export-tasks |
+| [export-tasks-github](egress/github/export-tasks-github.md) | haiku | capture, export-tasks |
 | [export-tasks-linear](egress/linear/export-tasks-linear.md) | haiku | export-tasks |
 | [export-tasks-notion](egress/notion/export-tasks-notion.md) | haiku | export-tasks |
 | [post-github](egress/github/post-github.md) | haiku | relay |
@@ -47,7 +47,14 @@ Skill-agents run the same-named skill in an isolated context window.
 |---|---|---|
 | [artifact-grounding-judge](learning/artifact-grounding-judge.md) | haiku | attribution-tracer |
 | [attribution-tracer](learning/attribution-tracer.md) | sonnet | debug, pr-code-review |
+| [capture-idea](learning/capture-idea.md) | sonnet | - |
 | [capture-learning](learning/capture-learning.md) | sonnet | build-code, cc-usage-analytics, clean-scaffolding, debug, find-work, grill-me, grill-with-docs, handoff, how-to, improve-codebase-architecture, improve-component, improve-skill-benchmarks, improve-skill-learnings, pr-code-review, prototype, register-skill, run-task-followups, tasks-to-linear, tdd, tldr-tech, to-e2e-tasks, to-seed, to-spec, to-tasks |
+
+## pick
+
+| Agent | Model | Consumers |
+|---|---|---|
+| [pick-scorer](pick/pick-scorer.md) | sonnet | pick |
 
 ## seed-review
 

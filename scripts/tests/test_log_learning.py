@@ -14,7 +14,6 @@ DOTFILES = pathlib.Path(__file__).resolve().parents[3]
 SHARED = DOTFILES / "claude-code-shared"
 SCHEMA = SHARED / "contracts" / "learning-schema.json"
 LOG_LEARNING = SHARED / "scripts" / "learning" / "log-learning.py"
-LEARNINGS_DIR = SHARED / "learnings"
 
 MINIMAL_SELF = {
     "type": "self",
@@ -286,3 +285,261 @@ class TestWriterRejectsMalformed:
         payload = {**MINIMAL_SELF, "type": "bogus"}
         result = _run_writer(payload, learnings_dir=tmp_path)
         assert result.returncode == 1
+
+
+# ── Attribution spine: dotfiles_sha / dotfiles_dirty / session_id ─────────────
+
+SESSION_UUID = "3df6cc36-8bb6-485e-bab4-5e773c4a29e5"
+
+
+def _git(repo, *args):
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        check=True, capture_output=True, text=True,
+    )
+
+
+@pytest.fixture
+def dotfiles_repo(tmp_path):
+    repo = tmp_path / "dotfiles"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "a.txt").write_text("one\n")
+    _git(repo, "add", "a.txt")
+    _git(repo, "commit", "-q", "-m", "init")
+    return repo
+
+
+def _head(repo):
+    return subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def _run_stamped(payload, learnings_dir, repo):
+    import os
+    env = {
+        **os.environ,
+        "LOG_LEARNING_DEST": str(learnings_dir),
+        "LOG_LEARNING_DOTFILES_DIR": str(repo),
+    }
+    return subprocess.run(
+        [sys.executable, str(LOG_LEARNING)],
+        input=json.dumps(payload), capture_output=True, text=True, env=env,
+    )
+
+
+def _written(learnings_dir):
+    lines = (learnings_dir / "unified-learnings.jsonl").read_text().strip().split("\n")
+    return [json.loads(l) for l in lines]
+
+
+def _with_ref(ref):
+    return {**MINIMAL_SELF, "evidence": [{"source": "transcript", "ref": ref, "quote": "q"}]}
+
+
+class TestWriterStampsAttribution:
+    def test_stamps_sha_dirty_and_session_id(self, tmp_path, dotfiles_repo):
+        out = tmp_path / "out"
+        ref = f".claude/projects/-p/{SESSION_UUID}.jsonl"
+        result = _run_stamped(_with_ref(ref), out, dotfiles_repo)
+        assert result.returncode == 0, result.stderr
+        rec = _written(out)[0]
+        assert rec["dotfiles_sha"] == _head(dotfiles_repo)
+        assert isinstance(rec["dotfiles_dirty"], bool)
+        assert rec["session_id"] == SESSION_UUID
+
+    def test_dirty_false_when_clean(self, tmp_path, dotfiles_repo):
+        out = tmp_path / "out"
+        assert _run_stamped(MINIMAL_SELF, out, dotfiles_repo).returncode == 0
+        assert _written(out)[0]["dotfiles_dirty"] is False
+
+    def test_dirty_true_with_modified_tracked_file(self, tmp_path, dotfiles_repo):
+        (dotfiles_repo / "a.txt").write_text("changed\n")
+        out = tmp_path / "out"
+        assert _run_stamped(MINIMAL_SELF, out, dotfiles_repo).returncode == 0
+        assert _written(out)[0]["dotfiles_dirty"] is True
+
+    def test_dirty_true_with_untracked_file(self, tmp_path, dotfiles_repo):
+        (dotfiles_repo / "new.txt").write_text("x\n")
+        out = tmp_path / "out"
+        assert _run_stamped(MINIMAL_SELF, out, dotfiles_repo).returncode == 0
+        assert _written(out)[0]["dotfiles_dirty"] is True
+
+    def test_session_id_null_without_uuid_in_refs(self, tmp_path, dotfiles_repo):
+        out = tmp_path / "out"
+        assert _run_stamped(_with_ref("docs/seeds/foo.json"), out, dotfiles_repo).returncode == 0
+        rec = _written(out)[0]
+        assert "session_id" in rec and rec["session_id"] is None
+
+    def test_session_id_taken_from_any_evidence_ref(self, tmp_path, dotfiles_repo):
+        payload = {**MINIMAL_SELF, "evidence": [
+            {"source": "artifact", "ref": "docs/seeds/foo.json", "quote": "q"},
+            {"source": "transcript", "ref": f"/t/{SESSION_UUID.upper()}.jsonl", "quote": "q"},
+        ]}
+        out = tmp_path / "out"
+        assert _run_stamped(payload, out, dotfiles_repo).returncode == 0
+        assert _written(out)[0]["session_id"] == SESSION_UUID
+
+    @pytest.mark.parametrize("field,value", [
+        ("dotfiles_sha", "abc123"),
+        ("dotfiles_dirty", False),
+        ("session_id", SESSION_UUID),
+    ])
+    def test_caller_supplied_stamp_field_rejected(self, tmp_path, dotfiles_repo, field, value):
+        out = tmp_path / "out"
+        result = _run_stamped({**MINIMAL_SELF, field: value}, out, dotfiles_repo)
+        assert result.returncode != 0
+        assert field in result.stderr
+        assert not (out / "unified-learnings.jsonl").exists()
+
+    def test_written_stamped_record_validates(self, tmp_path, dotfiles_repo):
+        out = tmp_path / "out"
+        assert _run_stamped(_with_ref(f"/t/{SESSION_UUID}.jsonl"), out, dotfiles_repo).returncode == 0
+        errors = list(_build_validator(_load_schema()).iter_errors(_written(out)[0]))
+        assert errors == [], [e.message for e in errors]
+
+
+class TestSchemaAttributionSpine:
+    def test_accepts_optional_escape_point(self):
+        rec = {**MINIMAL_ATTRIBUTION, "escape_point": {"path": "skills/to-tasks/SKILL.md", "section": "Step 3"}}
+        assert _validate(rec) == []
+
+    def test_accepts_escape_point_with_null_section(self):
+        rec = {**MINIMAL_ATTRIBUTION, "escape_point": {"path": "skills/to-tasks/SKILL.md", "section": None}}
+        assert _validate(rec) == []
+
+    def test_rejects_escape_point_missing_path(self):
+        rec = {**MINIMAL_ATTRIBUTION, "escape_point": {"section": "x"}}
+        assert _validate(rec) != []
+
+    def test_rejects_escape_point_extra_keys(self):
+        rec = {**MINIMAL_ATTRIBUTION, "escape_point": {"path": "p", "section": None, "x": 1}}
+        assert _validate(rec) != []
+
+    def test_accepts_stamp_fields(self):
+        rec = {**MINIMAL_SELF, "dotfiles_sha": "a" * 40, "dotfiles_dirty": True, "session_id": SESSION_UUID}
+        assert _validate(rec) == []
+
+    def test_accepts_null_session_id(self):
+        assert _validate({**MINIMAL_SELF, "session_id": None}) == []
+
+    def test_rejects_non_boolean_dirty(self):
+        assert _validate({**MINIMAL_SELF, "dotfiles_dirty": "yes"}) != []
+
+    def test_existing_rows_still_validate(self, tmp_path):
+        # Representative rows written before the optional stamp/escape_point
+        # fields existed, plus rows that carry them. Uses a tmp_path copy so the
+        # test never depends on the live learnings file that sessions append to.
+        base_ids = [
+            "a1b2c3d4-e5f6-4890-abcd-ef1234567891",
+            "a1b2c3d4-e5f6-4890-abcd-ef1234567892",
+            "a1b2c3d4-e5f6-4890-abcd-ef1234567893",
+            "a1b2c3d4-e5f6-4890-abcd-ef1234567894",
+        ]
+        payloads = [
+            MINIMAL_SELF,
+            MINIMAL_ATTRIBUTION,
+            {**MINIMAL_SELF, "dotfiles_sha": "a" * 40, "dotfiles_dirty": False, "session_id": SESSION_UUID},
+            {**MINIMAL_ATTRIBUTION, "escape_point": {"path": "skills/to-tasks/SKILL.md", "section": None}},
+        ]
+        path = tmp_path / "unified-learnings.jsonl"
+        path.write_text(
+            "\n".join(json.dumps({**_SERVER_STUB, "id": i, **p}) for i, p in zip(base_ids, payloads)) + "\n"
+        )
+        validator = _build_validator(_load_schema())
+        rows = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+        assert len(rows) == len(payloads)
+        bad = [(r.get("id"), e.message) for r in rows for e in validator.iter_errors(r)]
+        assert bad == [], bad[:5]
+
+
+class TestAttributionTagFailSoft:
+    def test_tagging_failure_still_writes_row_with_warning(self, tmp_path, dotfiles_repo):
+        import os
+        import shutil
+        # Mirror the layout log-learning.py resolves from (scripts/learning, contracts)
+        # with a tag-attribution.py stub that raises.
+        shared = tmp_path / "shared"
+        learning = shared / "scripts" / "learning"
+        learning.mkdir(parents=True)
+        shutil.copy(LOG_LEARNING, learning / "log-learning.py")
+        (learning / "tag-attribution.py").write_text(
+            "def load_changes(d):\n    return []\n"
+            "def load_applied(p):\n    return []\n"
+            "def tag_attribution(*a, **k):\n    raise RuntimeError('boom')\n"
+        )
+        (shared / "contracts").symlink_to(SHARED / "contracts")
+        out = tmp_path / "out"
+        env = {
+            **os.environ,
+            "LOG_LEARNING_DEST": str(out),
+            "LOG_LEARNING_DOTFILES_DIR": str(dotfiles_repo),
+        }
+        result = subprocess.run(
+            [sys.executable, str(learning / "log-learning.py")],
+            input=json.dumps(MINIMAL_SELF), capture_output=True, text=True, env=env,
+        )
+        assert result.returncode == 0, result.stderr
+        rows = _written(out)
+        assert len(rows) == 1
+        assert "attribution_tag" not in rows[0]
+        assert "WARNING: attribution_tag not set: boom" in result.stderr
+
+
+class TestDefaultJudgeCommandIsLockedDown:
+    def test_no_tools_and_hooks_disabled(self):
+        import importlib.util
+        import shlex
+        spec = importlib.util.spec_from_file_location("log_learning_mod", LOG_LEARNING)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        argv = shlex.split(mod.DEFAULT_JUDGE_CMD)
+        assert argv[:2] == ["claude", "-p"]
+        assert argv[argv.index("--tools") + 1] == ""
+        settings = json.loads(argv[argv.index("--settings") + 1])
+        assert settings["disableAllHooks"] is True
+
+
+class TestParseVerdict:
+    @pytest.fixture
+    def parse(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("log_learning_parse_mod", LOG_LEARNING)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod._parse_verdict
+
+    def test_bare_json(self, parse):
+        assert parse('{"verdict": "pass"}') == {"verdict": "pass"}
+
+    def test_json_fenced(self, parse):
+        text = 'Here you go:\n```json\n{"verdict": "pass", "reason": "grounded"}\n```\n'
+        assert parse(text) == {"verdict": "pass", "reason": "grounded"}
+
+    def test_plain_fence_without_language(self, parse):
+        text = '```\n{"verdict": "rejected", "reason": "not in diff"}\n```'
+        assert parse(text) == {"verdict": "rejected", "reason": "not in diff"}
+
+    def test_verdict_embedded_in_prose(self, parse):
+        text = 'After review my verdict is {"verdict": "pass", "reason": "ok"} as stated.'
+        assert parse(text) == {"verdict": "pass", "reason": "ok"}
+
+    def test_last_embedded_object_wins(self, parse):
+        text = 'Draft {"verdict": "pass"} but final {"verdict": "rejected", "reason": "x"}'
+        assert parse(text) == {"verdict": "rejected", "reason": "x"}
+
+    def test_rejected_verdict_is_returned(self, parse):
+        assert parse('{"verdict": "rejected", "reason": "no"}')["verdict"] == "rejected"
+
+    @pytest.mark.parametrize("text", [
+        "not json at all",
+        "",
+        '{"verdict": "maybe"}',
+        '{"reason": "no verdict key"}',
+        '["verdict", "pass"]',
+        'prose {"verdict": "unknown"} more prose',
+    ])
+    def test_unreadable_or_invalid_returns_none(self, parse, text):
+        assert parse(text) is None

@@ -59,9 +59,19 @@ Self-records have `reported_by == improves == skill slug`.
   "evidence": [
     {"source": "transcript", "ref": "<transcript_path>", "quote": "<verbatim excerpt>"}
   ],
+  "escape_point": {"path": "<repo-relative file where the gap lives>", "section": "<nearest heading in that file, or null>"},
   "confidence": "confirmed"
 }
 ```
+
+### Optional `escape_point`
+
+`escape_point` is optional. Include it only when you can name the file where the problem escaped (usually the `improves` target file, e.g. `claude-code-shared/skills/<slug>/SKILL.md`) and read that file in this run. Omit the key otherwise. Never guess a path.
+
+- `path`: repo-relative path of the file.
+- `section`: the exact text of the nearest heading in that file, or `null` when no single section is attributable.
+
+This is a proposal. `log-learning.py` validates it before writing: a heading that is not in the file is set to `null`, and a path that does not exist drops the `escape_point`. The learning is still written either way.
 
 ### Trigger → cause default
 

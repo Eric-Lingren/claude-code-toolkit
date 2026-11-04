@@ -91,6 +91,15 @@ Map the escape point to a slug:
 
 If you cannot identify a specific escape point (scaffolding is gone, no seed, no tasks file), set `improves: null` and `confidence: candidate`.
 
+### Propose `escape_point`
+
+Alongside `improves`, emit `escape_point: {"path": ..., "section": ...}` for the same single earliest escape point:
+
+- `path`: the repo-relative path of the file where the criterion should have appeared (the seed, tasks file, SKILL.md or agent doc the provenance walk stopped at).
+- `section`: the exact text of the nearest heading in that file that the walk found (for example the heading above the missing criterion or the instruction that should have carried it). Use `null` when no single heading is attributable.
+
+Omit `escape_point` entirely when `improves` is `null` or you have no file path from the walk. Never guess a path. This is a proposal: `log-learning.py` validates it before writing (a heading that is not in the file becomes `null`, a path that does not exist is dropped), so the learning is written either way.
+
 ## Step 3 — Classify the cause
 
 Choose the best-fit cause from this open-vocab seed list:
@@ -125,6 +134,7 @@ Construct the full v2 attribution record (without server-injected fields):
   "reported_by": "<slug of the calling skill>",
   "improves": "<slug of the escape-point skill, or null>",
   "improves_type": "skill",
+  "escape_point": {"path": "<repo-relative path of the escape-point file>", "section": "<nearest heading text, or null>"},
   "cause": "<from cause list>",
   "cause_label": "<snake_case if cause is 'other', else null>",
   "problem": "<what went wrong — run-scoped, observable>",
@@ -148,6 +158,8 @@ Construct the full v2 attribution record (without server-injected fields):
   "confidence": "confirmed|candidate"
 }
 ```
+
+`escape_point` is optional: drop the key when Step 2 produced no path. The draft passes through the judge to `log-learning.py` unchanged.
 
 Use `source: transcript` for transcript-derived evidence, `source: artifact` for seed/tasks/diff/SKILL.md evidence. Include at least one evidence entry with a verbatim quote.
 

@@ -41,7 +41,7 @@ Longer reasoning for structural choices is in the ADRs under [`docs/adr/`](docs/
 | Path | What it holds |
 |---|---|
 | [`skills/`](skills/) | Skills, one folder each with a `SKILL.md`. |
-| [`agents/`](agents/) | Subagents grouped by lane. [`agents/README.md`](agents/README.md) lists each one with its model and the skills that spawn it. |
+| [`agents/`](agents/) | Subagents organized into groups. [`agents/README.md`](agents/README.md) lists each one with its model and the skills that spawn it. |
 | [`contracts/`](contracts/) | Specs and JSON Schemas for data passed between stages and agents. |
 | [`hooks/`](hooks/) | Harness hooks: guards, linting, tier advice. |
 | [`scripts/`](scripts/) | Every mechanical step: API calls, git work, report builders, validators. Tested under `scripts/tests/`. |

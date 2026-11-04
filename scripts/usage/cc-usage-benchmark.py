@@ -29,10 +29,14 @@ import argparse
 import datetime
 import json
 import os
+import pickle
 import re
+import socket
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from glob import glob
+from pathlib import Path
 
 TIER_CONFIG = os.path.expanduser("~/.dotfiles/claude-code-shared/resources/model-tiers.json")
 
@@ -50,9 +54,87 @@ PRICE = {
 }
 
 # ---- weekly digest (snapshot + delta header + terminal nudge) ----
+# Default matches weekly-usage-report.sh (and the launchd plist), so a bare
+# `--digest` run reads and writes the same files as the scheduled weekly run.
 REPORT_DIR = os.path.expanduser(
-    os.environ.get("CC_USAGE_REPORT_DIR", "~/.cache/cc-usage-reports"))
-SNAPSHOT_PATH = os.path.join(REPORT_DIR, "snapshots.json")
+    os.environ.get("CC_USAGE_REPORT_DIR",
+                   "~/.dotfiles/claude-code-shared/usage-reports"))
+
+
+def _safe_name(name):
+    return re.sub(r"[^A-Za-z0-9._-]", "_", name) or "unknown"
+
+
+def _live_hostname():
+    """`hostname -s`, falling back to the socket hostname."""
+    name = ""
+    try:
+        name = subprocess.run(["hostname", "-s"], capture_output=True,
+                              text=True, timeout=5).stdout.strip()
+    except Exception:
+        pass
+    return name or socket.gethostname().split(".")[0]
+
+
+def _host_id_path():
+    return os.path.expanduser(
+        os.environ.get("CC_USAGE_HOST_FILE", "~/.config/cc-usage/host-id"))
+
+
+def _short_hostname():
+    """Stable per-machine id used to name this machine's snapshot file.
+
+    macOS hands out DHCP/DNS-derived hostnames when HostName is unset, so the
+    live hostname can change (a rename, a new network). A changed name would
+    start a second snapshots-<host>.json whose weeks overlap the old one, and
+    load_run_counts() would double count them. So the id is persisted once, in
+    a per-machine file outside the repo (snapshots are committed and shared,
+    this file must not be):
+      1. CC_USAGE_HOST overrides everything (tests, or a pinned name).
+      2. The persisted id file, if present.
+      3. Otherwise the current hostname, which is then persisted. Existing
+         installs therefore keep their current snapshot filename."""
+    name = os.environ.get("CC_USAGE_HOST", "").strip()
+    if name:
+        return _safe_name(name)
+    path = _host_id_path()
+    try:
+        saved = Path(path).read_text(encoding="utf-8").strip()
+    except OSError:
+        saved = ""
+    if saved:
+        return _safe_name(saved)
+    name = _safe_name(_live_hostname())
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            fh.write(name + "\n")
+    except OSError:
+        pass  # read-only home: fall back to the live name each run
+    return name
+
+
+# One snapshot file per machine so two machines never write the same file.
+# Trend/digest/drift read only this local file; load_run_counts() sums all.
+# HOST / SNAPSHOT_PATH are resolved lazily (never at import) so loading this
+# module via exec_module, as correction-rate.py does, has no side effects.
+def snapshot_path():
+    return os.path.join(REPORT_DIR, f"snapshots-{_short_hostname()}.json")
+
+
+def __getattr__(name):  # PEP 562: only runs when the global is not set
+    if name == "HOST":
+        return _short_hostname()
+    if name == "SNAPSHOT_PATH":
+        return snapshot_path()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _snapshot_file():
+    # An explicitly assigned SNAPSHOT_PATH (e.g. a test override) wins.
+    return globals().get("SNAPSHOT_PATH") or snapshot_path()
+
+
 # Adherence pre-dates tiering; weeks before rollout used the session model and
 # read as fake-low. None = use all weeks. Pin e.g. "2026-W21" to ignore noise.
 ROLLOUT_WEEK = None
@@ -597,7 +679,7 @@ def adherence_report(roots, config_path):
 
 def load_snapshot():
     try:
-        return json.load(open(SNAPSHOT_PATH))
+        return json.load(open(_snapshot_file()))
     except Exception:
         return {}
 
@@ -609,9 +691,31 @@ def write_snapshot(expected, per_week):
     for wk in per_week:
         snap[wk] = {"adherence": adherence_for_week(expected, per_week, wk)}
     os.makedirs(REPORT_DIR, exist_ok=True)
-    with open(SNAPSHOT_PATH, "w") as fh:
+    with open(_snapshot_file(), "w") as fh:
         json.dump(snap, fh, indent=2, sort_keys=True)
     return snap
+
+
+def load_run_counts(report_dir=None):
+    """Per-skill-per-week run count across every host's snapshot file.
+
+    Returns {skill: {week: runs}} where runs sums the `mix` counts of
+    adherence.skills.<slug> over all snapshots-*.json in report_dir. A host
+    that never reported has no file and adds nothing; unreadable files are
+    skipped."""
+    report_dir = report_dir or REPORT_DIR
+    counts = defaultdict(lambda: defaultdict(int))
+    for path in sorted(glob(os.path.join(report_dir, "snapshots-*.json"))):
+        try:
+            snap = json.load(open(path))
+            rows = [(skill, wk, sum(info["mix"].values()))
+                    for wk, entry in snap.items()
+                    for skill, info in entry["adherence"]["skills"].items()]
+        except Exception:
+            continue  # parse the whole file first so a bad one adds nothing
+        for skill, wk, n in rows:
+            counts[skill][wk] += n
+    return {s: dict(w) for s, w in counts.items()}
 
 
 def current_iso_week():
@@ -830,7 +934,34 @@ def _new_span(skill, t0, prev):
 
 
 def compute_latency(roots, config_path, idle_cap=IDLE_CAP):
-    """Per-skill invocation spans. Returns {skill: [span, ...]}."""
+    """Per-skill invocation spans. Returns {skill: [span, ...]}.
+
+    When CC_USAGE_SPANS_CACHE names a file, the result is shared across the
+    --latency and --tokens processes of one report run (same roots, config and
+    idle cap), so the transcript scan happens once. A missing, unreadable or
+    mismatched cache just falls through to a fresh scan.
+    """
+    cache = os.environ.get("CC_USAGE_SPANS_CACHE")
+    key = (sorted(roots.items()), config_path, idle_cap)
+    if cache:
+        try:
+            with open(cache, "rb") as fh:
+                saved_key, saved = pickle.load(fh)
+            if saved_key == key:
+                return saved
+        except Exception:
+            pass
+    spans = _scan_latency(roots, config_path, idle_cap)
+    if cache:
+        try:
+            with open(cache, "wb") as fh:
+                pickle.dump((key, spans), fh)
+        except Exception:
+            pass
+    return spans
+
+
+def _scan_latency(roots, config_path, idle_cap=IDLE_CAP):
     known = known_skills(config_path)
     spans = defaultdict(list)
 
@@ -992,6 +1123,59 @@ def latency_report(roots, config_path, min_n=1, idle_cap=IDLE_CAP):
     print_latency(compute_latency(roots, config_path, idle_cap), min_n, idle_cap)
 
 
+# ---------------------------------------------------------------------------
+# tokens: median output tokens per skill per week (informational trend line)
+# ---------------------------------------------------------------------------
+# Skill identity per session comes from the latency spans: each span is one
+# skill invocation (slash command, SKILL.md read, or Skill tool call) with its
+# ISO week and its output_tokens, counted once per assistant message id.
+# This view has no thresholds and is deliberately not wired into the digest,
+# so it can never raise an alert or a drift line.
+TOKEN_TREND_WEEKS = 6
+
+
+def median_out_by_skill_week(spans):
+    """{skill: {week: median output tokens per run}} from latency spans."""
+    out = {}
+    for skill, runs in spans.items():
+        by_week = defaultdict(list)
+        for r in runs:
+            if r.get("week") and r["out"] > 0:  # 0 means no usage data, not a cheap run
+                by_week[r["week"]].append(r["out"])
+        if by_week:
+            out[skill] = {wk: _med(v) for wk, v in by_week.items()}
+    return out
+
+
+def compute_token_trend(roots, config_path, idle_cap=IDLE_CAP):
+    return median_out_by_skill_week(compute_latency(roots, config_path, idle_cap))
+
+
+def print_token_trend(trend, max_weeks=TOKEN_TREND_WEEKS):
+    if not trend:
+        print("  no skill invocations found")
+        return
+    current = current_iso_week()  # partial week, same exclusion as drift and adherence
+    weeks = sorted({wk for v in trend.values() for wk in v if wk < current})[-max_weeks:]
+    if not weeks:
+        print("  no complete weeks yet")
+        return
+    print("=" * 78)
+    print("SKILL OUTPUT TOKENS  (median per run, by ISO week; informational only)")
+    print("=" * 78)
+    print(f"  {'skill':26s}" + "".join(f"{wk:>10s}" for wk in weeks))
+    for skill in sorted(trend):
+        cells = "".join(
+            f"{trend[skill][wk]:>10,.0f}" if wk in trend[skill] else f"{'-':>10s}"
+            for wk in weeks)
+        print(f"  {skill:26s}{cells}")
+    print()
+
+
+def token_trend_report(roots, config_path, idle_cap=IDLE_CAP):
+    print_token_trend(compute_token_trend(roots, config_path, idle_cap))
+
+
 def main():
     ap = argparse.ArgumentParser(description="Claude Code usage benchmark across profiles.")
     ap.add_argument("--profile", choices=list(PROFILES) + ["all"], default="all",
@@ -1003,6 +1187,8 @@ def main():
                     help="per-skill expected (config) vs actual model used")
     ap.add_argument("--latency", action="store_true",
                     help="per-skill wall-clock latency + parallelism shape")
+    ap.add_argument("--tokens", action="store_true",
+                    help="median output tokens per skill per week (info only, no alerts)")
     ap.add_argument("--min-n", type=int, default=1,
                     help="--latency: drop skills with fewer than N invocations")
     ap.add_argument("--idle-cap", type=float, default=IDLE_CAP,
@@ -1030,6 +1216,9 @@ def main():
         return
     if args.latency:
         latency_report(roots, args.config, args.min_n, args.idle_cap)
+        return
+    if args.tokens:
+        token_trend_report(roots, args.config, args.idle_cap)
         return
 
     per = {}

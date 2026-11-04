@@ -57,10 +57,10 @@ def validate(instance, schema):
 
 
 def test_investigator_orchestrator_agent_exists():
-    """agents/investigate/investigator.md must exist in the investigate/ lane directory."""
+    """agents/investigate/investigator.md must exist in the investigate/ group directory."""
     assert AGENT_PATH.exists(), (
         f"Missing: {AGENT_PATH}\n"
-        "The orchestrator must live at agents/investigate/investigator.md, in the agents/investigate/ lane."
+        "The orchestrator must live at agents/investigate/investigator.md, in the agents/investigate/ group."
     )
 
 

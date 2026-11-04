@@ -4,7 +4,7 @@ status: accepted
 
 # Scripts live in `scripts/`, not `agents/`
 
-Agents are grouped by lane under `agents/<group>/<name>.md` (`build`, `investigate`, `seed-review`, `egress`, `learning`, `shared`, `skill-agents`). Companion shell scripts that used to sit next to wrapped agents now live in `scripts/egress/`. The `agents/` tree holds only `.md` files plus the generated `README.md` index.
+Agents are organized into groups under `agents/<group>/<name>.md` (`build`, `investigate`, `seed-review`, `egress`, `learning`, `shared`, `skill-agents`). Companion shell scripts that used to sit next to wrapped agents now live in `scripts/egress/`. The `agents/` tree holds only `.md` files plus the generated `README.md` index.
 
 ## Consequences
 

@@ -11,7 +11,7 @@ claude-code-shared/scripts/review-watcher/
 # the gate
 run-all-tests.sh
 claude-code-shared/scripts/tests/*smoke*   # anticipated
-claude-code-shared/scripts/tests/test_publish_seed_bank_guard.py
+claude-code-shared/scripts/tests/test_publish_private_dirs_guard.py
 claude-code-shared/publish.json
 # learning writers and validators
 claude-code-shared/scripts/learning/log-learning.py
@@ -22,8 +22,38 @@ claude-code-shared/scripts/learning/*cluster*   # anticipated
 claude-code-shared/settings.json
 # repo policy
 claude-code-shared/resources/repo-policy.json
-# change-attribution detector (anticipated)
-claude-code-shared/scripts/attribution/   # anticipated
+# change-attribution detector
+claude-code-shared/scripts/learning/tag-attribution.py
+claude-code-shared/scripts/learning/load-change-diff.py
+claude-code-shared/scripts/shared/md_headings.py
+claude-code-shared/scripts/usage/drift-alert.py
+# change-record writers
+claude-code-shared/scripts/attribution/write-change-records.py
+claude-code-shared/scripts/attribution/change_records_commit.py
+claude-code-shared/scripts/attribution/change_records_push.py
+claude-code-shared/scripts/attribution/commit-change-records.sh
+claude-code-shared/scripts/attribution/change-revert.sh
+# whole attribution folder, so new attribution scripts are covered without a new entry
+claude-code-shared/scripts/attribution/
+# detector-controlling schemas, regression judge prompt, correction-rate denominator
+claude-code-shared/contracts/change-record-schema.json
+claude-code-shared/contracts/learning-schema.json
+claude-code-shared/agents/learning/artifact-grounding-judge.md
+claude-code-shared/scripts/usage/cc-usage-benchmark.py
+# learning escape-point validator
+claude-code-shared/scripts/learning/validate-escape-point.py
+# usage reporting
+claude-code-shared/scripts/usage/correction-rate.py
+claude-code-shared/scripts/usage/weekly-usage-report.sh
+# CI snapshot diff and comment
+claude-code-shared/scripts/attribution/ci-snapshot-diff.py
+claude-code-shared/scripts/attribution/ci-post-snapshot-comment.sh
+# change records folder: records are written by a direct push that never goes through the gate, and the gate that enforces this starts in Phase 2
+# seed-bank/ is deliberately not listed, seed JSON files are updated as work runs
+attribution/
+# git hooks and CI workflows
+.githooks/
+.github/workflows/
 # this list and its checker
 claude-code-shared/scripts/protected-paths/protected_paths.txt
 claude-code-shared/scripts/protected-paths/check-protected-paths.py

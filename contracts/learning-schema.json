@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "learning-schema",
   "title": "Learning Entry v2",
-  "description": "A single learning entry (self or attribution) appended by log-learning.py. schema_version, id, and timestamp are injected server-side; callers must not supply them.",
+  "description": "A single learning entry (self or attribution) appended by log-learning.py. schema_version, id, timestamp, dotfiles_sha, dotfiles_dirty, session_id and attribution_tag are injected server-side; callers must not supply them.",
   "type": "object",
   "required": [
     "schema_version",
@@ -131,6 +131,39 @@
       "type": "string",
       "enum": ["captured", "applied", "stale", "invalid"],
       "description": "Lifecycle state. Optional; set by improve-skill-benchmarks when fix is applied. 'stale' = superseded by newer learning; 'invalid' = grounding failed or entry is incorrect."
+    },
+    "dotfiles_sha": {
+      "type": ["string", "null"],
+      "description": "HEAD of the dotfiles repo when the entry was logged. Injected by log-learning.py; null if the repo state could not be read. Absent on rows logged before this field existed."
+    },
+    "dotfiles_dirty": {
+      "type": ["boolean", "null"],
+      "description": "True when the dotfiles working tree had uncommitted changes when the entry was logged. Injected by log-learning.py; null if the repo state could not be read."
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Session UUID parsed from the first evidence[].ref containing one (the transcript file name). Injected by log-learning.py; null when no ref contains a UUID."
+    },
+    "escape_point": {
+      "type": "object",
+      "required": ["path", "section"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "description": "File where the problem escaped."},
+        "section": {"type": ["string", "null"], "description": "Section within the file; null when not attributable to one."}
+      },
+      "description": "Optional. Earliest point in the pipeline where the problem could have been caught (attribution records)."
+    },
+    "attribution_tag": {
+      "type": "object",
+      "required": ["kind", "ref"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["regression_of", "recurrence_of", "new_defect"], "description": "regression_of: escape point sits inside a changed section of a recent change. recurrence_of: same cause and escape point as an applied learning. new_defect: neither."},
+        "ref": {"type": ["string", "null"], "description": "regression_of: the change_id. recurrence_of: the id of the applied learning (stands in as the cluster id until clusters exist). new_defect: null."},
+        "downgrade_reason": {"type": "string", "enum": ["judge_failure"], "description": "Optional. Present when a regression_of tag was downgraded to new_defect because the judge call failed (timeout, error, unreadable verdict), not because the judge rejected it."}
+      },
+      "description": "Optional. Causal tag injected by log-learning.py via tag-attribution.py; callers must not supply it. Absent on rows logged before this field existed."
     }
   },
   "if": {
