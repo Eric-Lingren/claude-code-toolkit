@@ -193,3 +193,34 @@ def test_cli_prints_json(tmp_path):
     assert out["week"] == "2026-W45"
     assert out["unattributed"] == 1
     assert out["skills"]["tdd"]["rate"] == pytest.approx(0.1)
+
+
+def lane_row(status, **extra):
+    return {"id": "x", "improves": "skill-x", "status": status, **extra}
+
+
+def test_lane_rates_three_merged_one_rejected(mod):
+    rows = [lane_row("applied", merged_sha="a")] * 3 + [lane_row("rejected")]
+    m = mod.lane_metrics(rows)
+    assert m["merge_rate"] == 0.75
+    assert m["rejected_rate"] == 0.25
+    assert m["by_target"]["skill-x"]["merge_rate"] == 0.75
+
+
+def test_lane_changes_requested_zero_when_none(mod):
+    m = mod.lane_metrics([lane_row("applied", merged_sha="a"), lane_row("captured")])
+    assert m["changes_requested"] == 0
+    assert m["changes_requested_rate"] == 0
+
+
+def test_lane_empty_and_non_lane_applied_ignored(mod):
+    m = mod.lane_metrics([lane_row("applied")])
+    assert m["resolved"] == 0 and m["merge_rate"] == 0
+
+
+def test_lane_digest_lines_print_rates(mod):
+    rows = [lane_row("applied", merged_sha="a")] * 3 + [lane_row("rejected")]
+    text = "\n".join(mod.render_lane_digest(mod.lane_metrics(rows)))
+    assert "merge rate: 0.75" in text
+    assert "rejected rate: 0.25" in text
+    assert "changes-requested rate: 0.00" in text

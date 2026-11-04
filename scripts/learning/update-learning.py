@@ -6,12 +6,20 @@ values against learning-schema.json, then atomically rewrites the file.
 
 Usage:
     python update-learning.py --id <uuid> [--status <s>] [--improves <slug>] [--improves-type <t>]
+                              [--merged-sha <sha>] [--reason <text>] [--escape-point <json>]
 
-At least one of --status, --improves, --improves-type is required.
+At least one of --status, --improves, --improves-type, --merged-sha, --reason, --escape-point is required.
+--escape-point takes a JSON object {"path": ..., "section": ...} (validated by the schema).
 Retarget a misrouted learning: --improves <slug> --improves-type <t> --status captured
+Record a merged fix: --status applied --merged-sha <sha>
+Reject a learning (never re-proposed): --status rejected --reason "<user's close comment>"
+Cluster a learning: --status clustered:<issue#>
 
-Valid status values: captured, applied, stale, invalid
+Valid status values: captured, applied, stale, invalid, rejected, clustered:<issue#>
 Valid improves_type values: skill, agent, process, contract
+
+The updated entry is validated against learning-schema.json before anything is written.
+A status of rejected requires a reason (on the entry already, or passed via --reason).
 
 Environment:
     LOG_LEARNING_DEST — override the learnings/ directory (used by tests).
@@ -24,6 +32,7 @@ import fcntl
 import json
 import os
 import pathlib
+import re
 import sys
 import tempfile
 
@@ -51,6 +60,25 @@ def _get_enum(field):
         sys.exit(1)
 
 
+def _validate_entry(entry):
+    """Validate a full entry against learning-schema.json; return list of error strings."""
+    try:
+        from jsonschema import Draft7Validator
+    except ImportError as e:
+        print(f"ERROR: jsonschema is required to validate updates: {e}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        schema = json.loads(SCHEMA_PATH.read_text())
+    except Exception as e:
+        print(f"ERROR: could not load learning-schema.json: {e}", file=sys.stderr)
+        sys.exit(1)
+    errors = []
+    for err in sorted(Draft7Validator(schema).iter_errors(entry), key=lambda e: list(e.path)):
+        where = ".".join(str(p) for p in err.path) or "(entry)"
+        errors.append(f"{where}: {err.message}")
+    return errors
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Update status and/or target of an existing learning entry."
@@ -59,6 +87,10 @@ def main():
     parser.add_argument("--status", help="New status value.")
     parser.add_argument("--improves", help="New target slug (retarget).")
     parser.add_argument("--improves-type", dest="improves_type", help="New target type.")
+    parser.add_argument("--merged-sha", dest="merged_sha", help="Commit SHA at which the fix merged.")
+    parser.add_argument("--reason", help="Why the learning was rejected (the user's close comment).")
+    parser.add_argument("--escape-point", dest="escape_point",
+                        help='JSON object {"path": "...", "section": "..."|null}.')
     args = parser.parse_args()
 
     entry_id = args.id.strip()
@@ -72,6 +104,8 @@ def main():
         ("status", args.status),
         ("improves", args.improves),
         ("improves_type", args.improves_type),
+        ("merged_sha", args.merged_sha),
+        ("reason", args.reason),
     ):
         if value is None:
             continue
@@ -79,7 +113,10 @@ def main():
         if not value:
             print(f"ERROR: --{field.replace('_', '-')} must be non-empty", file=sys.stderr)
             sys.exit(1)
-        if field != "improves":
+        if field == "improves" and (not re.match(r"^[a-z0-9][a-z0-9._-]*$", value) or ".." in value):
+            print(f"ERROR: invalid improves '{value}'. Must match ^[a-z0-9][a-z0-9._-]*$ and not contain '..'", file=sys.stderr)
+            sys.exit(1)
+        if field == "improves_type":
             allowed = _get_enum(field)
             if value not in allowed:
                 print(
@@ -89,8 +126,15 @@ def main():
                 sys.exit(1)
         updates[field] = value
 
+    if args.escape_point is not None:
+        try:
+            updates["escape_point"] = json.loads(args.escape_point)
+        except json.JSONDecodeError as e:
+            print(f"ERROR: --escape-point is not valid JSON: {e}", file=sys.stderr)
+            sys.exit(1)
+
     if not updates:
-        print("ERROR: pass at least one of --status, --improves, --improves-type", file=sys.stderr)
+        print("ERROR: pass at least one of --status, --improves, --improves-type, --merged-sha, --reason, --escape-point", file=sys.stderr)
         sys.exit(1)
 
     # Locate the JSONL file
@@ -128,6 +172,15 @@ def main():
                             )
                             sys.exit(1)
                         entry.update(updates)
+                        problems = _validate_entry(entry)
+                        if problems:
+                            print(
+                                f"ERROR: update would make entry id={entry_id} invalid "
+                                f"against learning-schema.json (nothing written):\n  "
+                                + "\n  ".join(problems),
+                                file=sys.stderr,
+                            )
+                            sys.exit(1)
                         found = True
                         updated_lines.append(
                             json.dumps(entry, ensure_ascii=False, separators=(",", ":")) + "\n"

@@ -118,6 +118,53 @@ def compute(learnings, run_counts, week):
     return {"week": week, "skills": skills, "unattributed": unattributed}
 
 
+def lane_metrics(learnings):
+    """Learnings-lane health from write-back outcomes, per target and overall.
+
+    merged = status applied with a merged_sha (set only by the lane write-back);
+    rejected = status rejected; changes_requested = status changes_requested (Phase 3
+    write-back; stays 0 until then). Rates are over the resolved total of the three.
+    """
+    def blank():
+        return {"merged": 0, "rejected": 0, "changes_requested": 0}
+
+    overall, by_target = blank(), {}
+    for row in learnings:
+        status = row.get("status")
+        if status == "applied" and row.get("merged_sha"):
+            key = "merged"
+        elif status == "rejected":
+            key = "rejected"
+        elif status == "changes_requested":
+            key = "changes_requested"
+        else:
+            continue
+        overall[key] += 1
+        by_target.setdefault(row.get("improves") or "unknown", blank())[key] += 1
+
+    def finish(c):
+        total = c["merged"] + c["rejected"] + c["changes_requested"]
+        return {**c, "resolved": total,
+                "merge_rate": c["merged"] / total if total else 0,
+                "rejected_rate": c["rejected"] / total if total else 0,
+                "changes_requested_rate": c["changes_requested"] / total if total else 0}
+
+    out = finish(overall)
+    out["by_target"] = {t: finish(c) for t, c in sorted(by_target.items())}
+    return out
+
+
+def render_lane_digest(metrics):
+    """Kick digest lines for the lane rates (kick script prints these)."""
+    return [
+        "lane health: %d resolved" % metrics["resolved"],
+        "  merge rate: %.2f (%d)" % (metrics["merge_rate"], metrics["merged"]),
+        "  rejected rate: %.2f (%d)" % (metrics["rejected_rate"], metrics["rejected"]),
+        "  changes-requested rate: %.2f (%d)" % (
+            metrics["changes_requested_rate"], metrics["changes_requested"]),
+    ]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=(
         "Per-skill correction rate (learnings / runs) for an ISO week. "
@@ -130,6 +177,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     out = compute(load_learnings(args.learnings),
                   load_run_counts(args.report_dir), args.week)
+    out["lane"] = lane_metrics(load_learnings(args.learnings))
     json.dump(out, sys.stdout, indent=2)
     sys.stdout.write("\n")
 

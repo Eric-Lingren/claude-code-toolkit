@@ -85,6 +85,7 @@
     "visual-judge": "T2",
     "pick-scorer": "T2",
     "capture-idea": "T2",
+    "learnings-clusterer": "T2",
     "export-tasks-github": "T1"
   },
   "sessions": {

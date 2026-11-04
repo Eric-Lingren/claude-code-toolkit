@@ -170,7 +170,12 @@ Use the Agent tool with subagent_type: artifact-grounding-judge and pass the dra
 ```
 ## Draft attribution record
 <draft JSON from Step 5>
+
+## Transcript path
+<transcript_path from your input>
 ```
+
+Always pass `transcript_path`: the judge hands it to log-learning.py, which stamps `session_id` (the transcript file name stem) and `skills_run` (skills invoked in that session) at log time. Do not put either field in the draft.
 
 The judge verifies evidence anchors against artifacts and calls log-learning.py only if grounded, or returns a rejection reason if not.
 

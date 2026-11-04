@@ -87,7 +87,24 @@ Single append-only log. All records from all skills land in one file. Each line 
 | `evidence` | array | Each item: `{source, ref, quote}`. `source` is `"transcript"` or `"artifact"`. |
 | `trace` | object or null | Attribution records only. Provenance pointers: `seed`, `tasks`, `task_id`, `pr`, `branch`. |
 | `confidence` | `"confirmed"` or `"candidate"` | `confirmed` = verify-anchors.py (self) or artifact-grounding-judge (attribution) verified all anchors. `candidate` = weak but real anchors. |
-| `status` | `"active"` | Reserved for future state transitions. |
+| `status` | string (optional) | Lifecycle state. One of `captured`, `applied`, `stale`, `invalid`, `rejected`, or `clustered:<issue#>`. See "Lifecycle status" below. Absent on a freshly logged row. |
+| `merged_sha` | string (optional) | Commit SHA (7-40 lowercase hex) at which the fix merged. Set on `applied` rows. |
+| `reason` | string (optional) | The user's close comment explaining a rejection. Required when `status` is `rejected`. |
+
+## Lifecycle status
+
+Written only by `scripts/learning/update-learning.py`, which validates the whole updated entry against `learning-schema.json` before writing. A failed validation writes nothing.
+
+| Status | Meaning |
+|--------|---------|
+| `captured` | Valid and targeted; waiting for a fix. Also set after retargeting a misrouted learning. |
+| `applied` | A fix landed. May carry `merged_sha`, the commit at which the fix merged (`--merged-sha <sha>`). |
+| `stale` | Superseded by a newer learning. |
+| `invalid` | Grounding failed, no file owns the fix, or the entry is incorrect. |
+| `rejected` | The fix PR was closed unmerged by the user. Requires `reason`, the user's close comment (`--status rejected --reason "<text>"`). |
+| `clustered:<issue#>` | Pulled into a cluster tracked by GitHub issue `<issue#>` (a positive integer, for example `clustered:123`). Excluded from per-skill runs until that issue resolves. |
+
+**Rejected rule.** A `rejected` learning is never re-proposed. Every consumer that selects learnings to fix (per-skill batches, the learnings lane, clustering) must skip rows with `status: rejected`, and recurrence detection must not resurrect them. The `reason` stays on the row so a later reader can see why.
 
 ## Agents
 

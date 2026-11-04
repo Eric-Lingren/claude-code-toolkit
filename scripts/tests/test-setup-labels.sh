@@ -44,6 +44,9 @@ out="$("$SCRIPT" --apply 2>&1)"; rc=$?
 [ $rc -eq 0 ] && pass "apply exits 0" || fail "apply exits 0"
 { grep -q 'label create idea' "$GH_LOG" && grep -q 'label create fix' "$GH_LOG"; } \
   && pass "apply creates idea and fix" || fail "apply creates idea and fix"
+{ grep -q 'label create learnings-lane' "$GH_LOG" && grep -q 'label create blocked' "$GH_LOG" \
+  && grep -q 'label create needs-grill' "$GH_LOG" && grep -q 'label create system-generated' "$GH_LOG"; } \
+  && pass "apply creates lane labels" || fail "apply creates lane labels"
 { grep -q 'label delete bug' "$GH_LOG" && grep -q 'label delete wontfix' "$GH_LOG"; } \
   && pass "apply deletes unused defaults" || fail "apply deletes unused defaults"
 grep -q 'label delete triage' "$GH_LOG" && fail "apply never deletes triage" || pass "apply never deletes triage"

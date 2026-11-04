@@ -4,8 +4,8 @@
 
 # dispatcher (anticipated)
 claude-code-shared/scripts/dispatch/   # anticipated
-# learnings watcher (anticipated)
-claude-code-shared/scripts/learnings-watcher/   # anticipated
+# learnings lane control code, including the gate (lane_gate.py)
+claude-code-shared/scripts/learnings-lane/
 # review-watcher scripts
 claude-code-shared/scripts/review-watcher/
 # the gate
@@ -13,6 +13,7 @@ run-all-tests.sh
 claude-code-shared/scripts/tests/*smoke*   # anticipated
 claude-code-shared/scripts/tests/test_publish_private_dirs_guard.py
 claude-code-shared/publish.json
+claude-code-shared/scripts/shared/smoke-test.py
 # learning writers and validators
 claude-code-shared/scripts/learning/log-learning.py
 claude-code-shared/scripts/learning/update-learning.py

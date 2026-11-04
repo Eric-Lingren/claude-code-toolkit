@@ -17,6 +17,41 @@ invokedBy: human
 
 Apply captured learnings from `unified-learnings.jsonl` to their target files.
 
+## Headless mode (`--headless <target>`)
+
+Invoked as `/improve-skill-learnings --headless <target>`. This is a mode of this
+skill, not a separate skill: the Step 4 validator prompt and the Step 6 drafter
+prompt are read from this file by the driver, never copied. Without `--headless`,
+ignore this section and follow Steps 1 to 9 unchanged. Not used by the seed bank
+pickup flow.
+
+Fixed answers, no questions asked:
+
+- The target is the argument. No Step 2 picker, no run-all prompt.
+- Every root-cause cluster of the target runs (clusterer, then `cluster_flags.py`).
+- The per-diff `Apply?` prompt is auto-yes: the PR is the review.
+- Contract drift (the Step 6 type-drift check firing) marks the cluster
+  `needs-grill` and makes no commit for it. Clusters flagged by `cluster_flags.py`
+  are `needs-grill` too.
+
+Run the driver and stop; do not run Steps 1 to 9:
+
+```bash
+python3 ~/.dotfiles/claude-code-shared/scripts/learnings-lane/headless_run.py \
+  --target <target> --run-file <run-file.json>
+```
+
+Rules the driver enforces:
+
+- It never calls `update-learning.py` and never touches `unified-learnings.jsonl`.
+  Stale, invalid, retarget, and needs-grill verdicts go to the run file, whose
+  shape is `scripts/learnings-lane/run-file-contract.json` (check it with
+  `validate_run_file.py`).
+- One commit per root-cause cluster, with a trailer listing the member learning
+  ids that were applied: `Learning-Ids: id1,id2`.
+- Models are reached through `$CLAUDE_BIN -p` (Haiku for validation), so tests
+  swap in a stub binary.
+
 ## Step 1: Load and filter learnings
 
 Run the following to load all `status == "captured"` entries. Entries with no
@@ -227,7 +262,7 @@ Learning entry:
   fix: {fix}
 
 Target file paths to check (in order):
-{path_candidates — one per line}
+{path_candidates}
 
 Steps:
 1. Check whether each path exists (use Bash: test -f <path> && echo exists).
@@ -453,8 +488,9 @@ Wait for response.
 Apply each hunk of the approved diff with the Edit tool. Do NOT pipe the diff
 to `patch`. Agent-generated diffs pass through model text output and may
 contain HTML-escaped entities (e.g. `&lt;`, `&gt;`, `&amp;`) that corrupt a
-patch. Use the literal file text as `old_string`/`new_string`, unescaping any
-entities first.
+patch. Use the literal file text as `old_string`/`new_string`. Match the raw
+text first (files may legitimately contain `&amp;`, `&lt;`, `&gt;`); unescape
+entities only as a fallback when the raw `old_string` is not found.
 
 If an Edit fails (old_string not found), the diff's context drifted from the
 real file. That is a drafting failure, not a problem with the learning. Re-read

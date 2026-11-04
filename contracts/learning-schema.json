@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "learning-schema",
   "title": "Learning Entry v2",
-  "description": "A single learning entry (self or attribution) appended by log-learning.py. schema_version, id, timestamp, dotfiles_sha, dotfiles_dirty, session_id and attribution_tag are injected server-side; callers must not supply them.",
+  "description": "A single learning entry (self or attribution) appended by log-learning.py. schema_version, id, timestamp, dotfiles_sha, dotfiles_dirty, session_id, skills_run and attribution_tag are injected server-side; callers must not supply them.",
   "type": "object",
   "required": [
     "schema_version",
@@ -129,8 +129,21 @@
     },
     "status": {
       "type": "string",
-      "enum": ["captured", "applied", "stale", "invalid"],
-      "description": "Lifecycle state. Optional; set by improve-skill-benchmarks when fix is applied. 'stale' = superseded by newer learning; 'invalid' = grounding failed or entry is incorrect."
+      "anyOf": [
+        {"enum": ["captured", "applied", "stale", "invalid", "rejected"]},
+        {"pattern": "^clustered:[1-9][0-9]*$"}
+      ],
+      "description": "Lifecycle state. Optional; set by improve-skill-benchmarks when fix is applied. 'stale' = superseded by newer learning; 'invalid' = grounding failed or entry is incorrect; 'rejected' = the fix PR was closed unmerged by the user (requires 'reason'; never re-proposed); 'clustered:<issue#>' = pulled into a cluster tracked by that GitHub issue number and excluded from per-skill runs until it resolves."
+    },
+    "merged_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$",
+      "description": "Optional. Commit SHA (7-40 lowercase hex) at which the fix for this learning merged. Set on 'applied' rows by the lane write-back."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional. The user's close comment explaining why the fix was rejected. Required when status is 'rejected'."
     },
     "dotfiles_sha": {
       "type": ["string", "null"],
@@ -142,7 +155,12 @@
     },
     "session_id": {
       "type": ["string", "null"],
-      "description": "Session UUID parsed from the first evidence[].ref containing one (the transcript file name). Injected by log-learning.py; null when no ref contains a UUID."
+      "description": "Session id: the transcript file name stem when log-learning.py gets --transcript-path (attribution records), else the first UUID in evidence[].ref. Injected by log-learning.py; null when no ref contains a UUID."
+    },
+    "skills_run": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Skill names invoked in the session, in first-use order, extracted from the transcript at log time. Injected by log-learning.py only when --transcript-path is passed (attribution records); empty when the session invoked none. Absent on rows logged before this field existed and on self rows. Not backfilled."
     },
     "escape_point": {
       "type": "object",
@@ -183,6 +201,15 @@
       "cause_label": {"type": "null"}
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"const": "rejected"}},
+        "required": ["status"]
+      },
+      "then": {"required": ["reason"]}
+    }
+  ],
   "examples": [
     {
       "schema_version": "2",

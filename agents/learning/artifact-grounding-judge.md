@@ -85,12 +85,12 @@ A missing file is not a fabrication. If the check prints `MISSING` (or `ref` can
 You must call `log-learning.py`. A `pass` reply without `write_exit` and `write_output` loses the record. Call it with the draft record (minus server-injected fields: schema_version, id, timestamp — the writer injects those):
 
 ```bash
-python ~/.dotfiles/claude-code-shared/scripts/learning/log-learning.py <<'JSON'
+python ~/.dotfiles/claude-code-shared/scripts/learning/log-learning.py --transcript-path "<path from the ## Transcript path section>" <<'JSON'
 <draft JSON without schema_version/id/timestamp>
 JSON
 ```
 
-Use a quoted heredoc, not `echo '...'`. Record text often contains single quotes.
+If the input has no `## Transcript path` section, omit the `--transcript-path` flag. Use a quoted heredoc, not `echo '...'`. Record text often contains single quotes.
 
 Then return the verdict with the script's stdout and exit code copied verbatim:
 ```

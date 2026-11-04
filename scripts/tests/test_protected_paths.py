@@ -137,3 +137,24 @@ def test_list_file_itself_is_protected():
 
 def test_missing_list_is_error():
     assert run("--list", "/nonexistent", "a").returncode == 2
+
+
+LANE_PATHS = [
+    "claude-code-shared/scripts/learnings-lane/lane_gate.py",
+    "claude-code-shared/scripts/shared/smoke-test.py",
+]
+
+
+@pytest.mark.parametrize("path", LANE_PATHS)
+def test_lane_control_code_is_protected(path):
+    r = run(path)
+    assert r.returncode == 1
+    assert path in r.stdout
+    assert (REPO / path).exists()
+
+
+def test_lane_entries_listed_and_watcher_placeholder_gone():
+    listed = [p for p, _ in entries()]
+    assert (("claude-code-shared/scripts/learnings-lane/", False)) in entries()
+    assert (("claude-code-shared/scripts/shared/smoke-test.py", False)) in entries()
+    assert not any("learnings-watcher" in p for p in listed)

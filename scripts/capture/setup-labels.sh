@@ -5,7 +5,7 @@
 #   (default)  dry-run: prints planned actions, runs no mutating gh command
 #   --apply    performs them
 #
-# Ensures idea and fix exist; deletes the nine GitHub default labels only after
+# Ensures idea, fix and the learnings-lane labels (learnings-lane, blocked, needs-grill, system-generated) exist; deletes the nine GitHub default labels only after
 # confirming no issue (open or closed) uses them. Aborts listing offenders otherwise.
 # Refuses any repo other than Eric-Lingren/dotfiles.
 set -euo pipefail
@@ -13,7 +13,7 @@ set -euo pipefail
 ALLOWED_REPO="Eric-Lingren/dotfiles"
 REPO="$ALLOWED_REPO"
 APPLY=0
-ENSURE=(idea fix)
+ENSURE=(idea fix learnings-lane blocked needs-grill system-generated)
 DEFAULTS=("bug" "documentation" "duplicate" "enhancement" "good first issue" "help wanted" "invalid" "question" "wontfix")
 
 while [ $# -gt 0 ]; do

@@ -1,0 +1,83 @@
+{
+  "name": "learnings-cluster",
+  "version": "2.0",
+  "description": "Request and response contract for the learnings clusterer. validate_clusters.py loads this file and enforces it at runtime, so the structure below is the single source of truth. Cross-field rules are named under rules; validate_clusters.py must implement exactly those names (a test fails on any mismatch).",
+  "request": {
+    "type": "object",
+    "required": ["target", "learnings", "pregroups"],
+    "additionalProperties": false,
+    "properties": {
+      "target": {"type": "string", "minLength": 1},
+      "learnings": {
+        "type": "array",
+        "minItems": 1,
+        "description": "Eligible learning rows for one target. Only id and improves are read here; the rest of the row is the learning contract's concern and passes through.",
+        "items": {
+          "type": "object",
+          "required": ["id", "improves"],
+          "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "improves": {"type": "string", "minLength": 1}
+          }
+        }
+      },
+      "pregroups": {
+        "type": "array",
+        "description": "Deterministic hints. Lists of learning ids.",
+        "items": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      },
+      "errors": {
+        "type": "array",
+        "description": "Present only on a retry. Reasons the previous response was rejected.",
+        "items": {"type": "string"}
+      }
+    }
+  },
+  "response": {
+    "type": "object",
+    "required": ["clusters"],
+    "additionalProperties": false,
+    "properties": {
+      "clusters": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["id", "target", "learning_ids", "root_cause", "fix"],
+          "additionalProperties": false,
+          "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "target": {"type": "string", "minLength": 1},
+            "learning_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+            "root_cause": {"type": "string", "minLength": 1},
+            "fix": {"type": "string", "minLength": 1},
+            "contradiction": {"type": "boolean", "description": "Optional. true when learnings in or across clusters of this target ask for opposing changes to the same section. Carried through to cluster_flags.py."}
+          }
+        }
+      }
+    }
+  },
+  "rules": {
+    "unique-request-ids": "Learning ids in the request are unique.",
+    "pregroup-ids-known": "Every id in request.pregroups is a request learning id.",
+    "unique-cluster-ids": "Cluster ids in the response are unique.",
+    "target-matches-request": "Every cluster.target equals request.target.",
+    "ids-known": "Every cluster.learning_ids entry is a request learning id.",
+    "partition": "Every request learning id appears in exactly one cluster, once.",
+    "no-escape-point": "No escape_point key appears anywhere in the response. Escape points come from attribution records only."
+  },
+  "sample": {
+    "request": {
+      "target": "build-code",
+      "learnings": [{"id": "a", "improves": "build-code"}, {"id": "b", "improves": "build-code"}],
+      "pregroups": [["a", "b"]]
+    },
+    "response": {
+      "clusters": [
+        {"id": "c1", "target": "build-code", "learning_ids": ["a", "b"],
+         "root_cause": "Runner artifacts are not verified at receipt collection.",
+         "fix": "Check log_path exists before writing it back."}
+      ]
+    }
+  }
+}

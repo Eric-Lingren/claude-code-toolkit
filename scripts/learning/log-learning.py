@@ -8,15 +8,22 @@ against learning-schema.json, then atomically appends to
 claude-code-shared/learnings/unified-learnings.jsonl.
 
 Usage:
-    echo '{...}' | python log-learning.py
+    echo '{...}' | python log-learning.py [--transcript-path PATH]
+
+    --transcript-path PATH   Session transcript (.jsonl) the record came from. Attribution
+        records pass it: session_id becomes the transcript file name stem and skills_run is
+        extracted from the transcript at log time. Without it, behavior is unchanged.
 
 Caller supplies all fields EXCEPT: schema_version, id, timestamp, dotfiles_sha,
-dotfiles_dirty, session_id, attribution_tag.
+dotfiles_dirty, session_id, attribution_tag, skills_run.
 
 Attribution stamps (server-side):
     dotfiles_sha   — HEAD of the dotfiles repo (null if git cannot be read)
     dotfiles_dirty — true when the dotfiles tree has uncommitted changes (null if git cannot be read)
-    session_id     — first UUID found in evidence[].ref (null if none)
+    session_id     — transcript file name stem when --transcript-path is given, else first
+                      UUID found in evidence[].ref (null if none)
+    skills_run     — only with --transcript-path: skill names invoked in that session, in first-use
+                      order ([] when none; omitted with a warning if the transcript is unreadable)
     attribution_tag — {kind, ref} from tag-attribution.py: regression_of <change_id>,
                       recurrence_of <learning id>, or new_defect. Computed from the
                       validated escape_point, the change records in
@@ -79,7 +86,7 @@ LEARNINGS_DIR = pathlib.Path(_dest_override) if _dest_override else SCRIPT_DIR.p
 
 SERVER_FIELDS = {
     "schema_version", "id", "timestamp",
-    "dotfiles_sha", "dotfiles_dirty", "session_id", "attribution_tag",
+    "dotfiles_sha", "dotfiles_dirty", "session_id", "attribution_tag", "skills_run",
 }
 
 _UUID_RE = re.compile(
@@ -143,6 +150,40 @@ def _session_id(entry):
             if m:
                 return m.group(0).lower()
     return None
+
+
+def _transcript_skills_run(path):
+    """Skill names invoked in a transcript .jsonl, first-use order, deduped by tool_use id then name.
+
+    A Skill call is an assistant message content block {type: tool_use, name: Skill,
+    input: {skill: <name>}}. The same call can repeat inside api-request-blob lines.
+    Raises OSError when the file cannot be read.
+    """
+    names, seen_ids = [], set()
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if '"Skill"' not in line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            msg = rec.get("message") if isinstance(rec, dict) else None
+            content = msg.get("content") if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if not (isinstance(block, dict) and block.get("type") == "tool_use"
+                        and block.get("name") == "Skill"):
+                    continue
+                if block.get("id") in seen_ids:
+                    continue
+                seen_ids.add(block.get("id"))
+                inp = block.get("input")
+                name = inp.get("skill") if isinstance(inp, dict) else None
+                if isinstance(name, str) and name and name not in names:
+                    names.append(name)
+    return names
 
 
 def _load_script(filename, modname):
@@ -365,7 +406,21 @@ def _build_validator(schema):
     ))
 
 
+def _transcript_arg(argv):
+    """Value of --transcript-path (or --transcript-path=PATH) in argv, else None."""
+    for i, a in enumerate(argv):
+        if a == "--transcript-path":
+            if i + 1 >= len(argv):
+                print("ERROR: --transcript-path needs a value", file=sys.stderr)
+                sys.exit(1)
+            return argv[i + 1]
+        if a.startswith("--transcript-path="):
+            return a.split("=", 1)[1]
+    return None
+
+
 def main():
+    transcript_path = _transcript_arg(sys.argv[1:])
     raw = sys.stdin.read().strip()
     if not raw:
         print("ERROR: no input on stdin", file=sys.stderr)
@@ -397,6 +452,14 @@ def main():
     entry["timestamp"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     entry["dotfiles_sha"], entry["dotfiles_dirty"] = _dotfiles_stamp()
     entry["session_id"] = _session_id(entry)
+    if transcript_path:
+        stem = pathlib.Path(transcript_path).stem
+        if stem:
+            entry["session_id"] = stem
+        try:
+            entry["skills_run"] = _transcript_skills_run(transcript_path)
+        except OSError as e:
+            print(f"WARNING: skills_run not set (transcript unreadable: {e})", file=sys.stderr)
 
     # Validate a caller-supplied escape_point; the learning logs regardless
     if "escape_point" in entry:

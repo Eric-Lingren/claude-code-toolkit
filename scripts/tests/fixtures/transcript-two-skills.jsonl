@@ -1,0 +1,5 @@
+{"type": "user", "message": {"role": "user", "content": "go"}}
+{"parentUuid": "a", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_01", "name": "Skill", "input": {"skill": "grill-me", "args": "plan"}}]}}
+{"type": "api-request-blob", "sessionId": "x", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_01", "name": "Skill", "input": {"skill": "grill-me", "args": "plan"}}]}}
+{"parentUuid": "b", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_02", "name": "Bash", "input": {"command": "ls"}}]}}
+{"parentUuid": "c", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_03", "name": "Skill", "input": {"skill": "to-seed", "args": "save"}}]}}

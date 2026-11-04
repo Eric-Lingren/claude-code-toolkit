@@ -2,7 +2,7 @@
 
 Generated from `registry.json` by `scripts/registration/gen-agents-readme.py`. Do not edit by hand.
 
-35 agents across 8 groups.
+36 agents across 8 groups.
 
 Skill-agents run the same-named skill in an isolated context window.
 
@@ -49,6 +49,7 @@ Skill-agents run the same-named skill in an isolated context window.
 | [attribution-tracer](learning/attribution-tracer.md) | sonnet | debug, pr-code-review |
 | [capture-idea](learning/capture-idea.md) | sonnet | - |
 | [capture-learning](learning/capture-learning.md) | sonnet | build-code, cc-usage-analytics, clean-scaffolding, debug, find-work, grill-me, grill-with-docs, handoff, how-to, improve-codebase-architecture, improve-component, improve-skill-benchmarks, improve-skill-learnings, pr-code-review, prototype, register-skill, run-task-followups, tasks-to-linear, tdd, tldr-tech, to-e2e-tasks, to-seed, to-spec, to-tasks |
+| [learnings-clusterer](learning/learnings-clusterer.md) | sonnet | improve-skill-learnings |
 
 ## pick
 

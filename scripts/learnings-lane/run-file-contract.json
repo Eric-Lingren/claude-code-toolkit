@@ -1,0 +1,59 @@
+{
+  "name": "learnings-headless-run-file",
+  "version": "1.0",
+  "description": "Run file written by `/improve-skill-learnings --headless <target>`. Headless mode never calls update-learning.py and never touches unified-learnings.jsonl; every stale, invalid, retarget and needs-grill verdict lands here for the lane writeback to apply later. Checked by validate_run_file.py.",
+  "output": {
+    "type": "object",
+    "required": ["version", "target", "verdicts", "clusters"],
+    "properties": {
+      "version": {"const": "1.0"},
+      "target": {"type": "string"},
+      "verdicts": {
+        "type": "array",
+        "description": "One entry per learning that did not end in a commit, plus 'applied' for those that did.",
+        "items": {
+          "type": "object",
+          "required": ["learning_id", "cluster_id", "verdict", "reason"],
+          "properties": {
+            "learning_id": {"type": "string"},
+            "cluster_id": {"type": "string"},
+            "verdict": {"enum": ["applied", "stale", "invalid", "retarget", "needs-grill", "draft-failed"]},
+            "reason": {"type": "string"},
+            "file_path": {"type": ["string", "null"]},
+            "suggested_improves": {"type": "string", "description": "Required when verdict is retarget."},
+            "suggested_improves_type": {"enum": ["skill", "agent", "process", "contract"], "description": "Required when verdict is retarget."}
+          }
+        }
+      },
+      "clusters": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "status", "learning_ids"],
+          "properties": {
+            "id": {"type": "string"},
+            "status": {"enum": ["committed", "needs-grill", "no-change"]},
+            "learning_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "applied_ids": {"type": "array", "items": {"type": "string"}, "description": "Ids in the Learning-Ids trailer. Required when status is committed."},
+            "commit": {"type": "string", "description": "Required when status is committed; absent otherwise."},
+            "reasons": {"type": "array", "items": {"type": "string"}, "description": "Required when status is needs-grill."}
+          }
+        }
+      }
+    }
+  },
+  "sample": {
+    "version": "1.0",
+    "target": "demo-skill",
+    "verdicts": [
+      {"learning_id": "L1", "cluster_id": "c1", "verdict": "applied", "reason": "ok", "file_path": "skills/demo-skill/SKILL.md"},
+      {"learning_id": "L2", "cluster_id": "c1", "verdict": "stale", "reason": "already_applied", "file_path": "skills/demo-skill/SKILL.md"},
+      {"learning_id": "L3", "cluster_id": "c1", "verdict": "retarget", "reason": "type_mismatch", "file_path": "skills/demo-skill/SKILL.md", "suggested_improves": "other-agent", "suggested_improves_type": "agent"},
+      {"learning_id": "L4", "cluster_id": "c2", "verdict": "needs-grill", "reason": "contract-drift"}
+    ],
+    "clusters": [
+      {"id": "c1", "status": "committed", "learning_ids": ["L1", "L2", "L3"], "applied_ids": ["L1"], "commit": "0123abc"},
+      {"id": "c2", "status": "needs-grill", "learning_ids": ["L4"], "reasons": ["contract-drift"]}
+    ]
+  }
+}

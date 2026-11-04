@@ -1,0 +1,2 @@
+{"type": "user", "message": {"role": "user", "content": "mention \"Skill\" in text"}}
+{"parentUuid": "a", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_09", "name": "Bash", "input": {"command": "ls"}}]}}

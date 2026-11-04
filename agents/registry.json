@@ -328,6 +328,15 @@
       ]
     },
     {
+      "name": "learnings-clusterer",
+      "file": "agents/learning/learnings-clusterer.md",
+      "model": "sonnet",
+      "description": "Names the root cause and fix for each cluster of one target's learnings, in the cluster-contract.json shape. Never writes escape_point. Spawned by cluster_target.py in the learnings lane.",
+      "consumers": [
+        "improve-skill-learnings"
+      ]
+    },
+    {
       "name": "pick-scorer",
       "file": "agents/pick/pick-scorer.md",
       "model": "sonnet",
